@@ -1,0 +1,685 @@
+{
+  "modelVersion": "v1.0",
+  "algorithm": "GradBoost",
+  "nVariants": 50,
+  "nFeatures": 54,
+  "cvResults": {
+    "RandomForest": {
+      "loo_r2": 0.04206943910314366,
+      "loo_rmse": 9.940291156209666,
+      "loo_pcc": -0.20510835941800046
+    },
+    "GradBoost": {
+      "loo_r2": 0.1201914651668048,
+      "loo_rmse": 8.74025865248144,
+      "loo_pcc": 0.34668640753107816
+    },
+    "Ridge": {
+      "loo_r2": 0.03601185729725943,
+      "loo_rmse": 20.268946480638125,
+      "loo_pcc": 0.18976790375945934
+    }
+  },
+  "bestModel": "GradBoost",
+  "looR2": 0.1201914651668048,
+  "looRMSE": 8.74025865248144,
+  "inSampleR2": 0.983228222718589,
+  "pearsonR": 0.9937108597525921,
+  "stabilityRange": {
+    "min": 0.04785,
+    "max": 96.03398000000001,
+    "wt": 1.0
+  },
+  "variantPredictions": [
+    {
+      "sampleId": "V041",
+      "mutation": "G234R",
+      "actual_score": 96.034,
+      "predicted_score": 92.3749,
+      "error": 3.6591,
+      "labels": {
+        "thermal_half_life_min": 6465.815,
+        "thermal_half_life_fc": 479.9207,
+        "lysate_fold_change": 0.0744,
+        "facs_fold_change": 0.0502
+      }
+    },
+    {
+      "sampleId": "V003",
+      "mutation": "F190Q",
+      "actual_score": 51.3931,
+      "predicted_score": 45.831,
+      "error": 5.5621,
+      "labels": {
+        "thermal_half_life_min": 3456.693,
+        "thermal_half_life_fc": 256.5707,
+        "lysate_fold_change": 0.0953,
+        "facs_fold_change": 0.1021
+      }
+    },
+    {
+      "sampleId": "V033",
+      "mutation": "E76K",
+      "actual_score": 46.0466,
+      "predicted_score": 42.5506,
+      "error": 3.496,
+      "labels": {
+        "thermal_half_life_min": 3097.409,
+        "thermal_half_life_fc": 229.9031,
+        "lysate_fold_change": 0.0912,
+        "facs_fold_change": 0.0738
+      }
+    },
+    {
+      "sampleId": "V016",
+      "mutation": "H16P",
+      "actual_score": 35.2131,
+      "predicted_score": 31.9498,
+      "error": 3.2632,
+      "labels": {
+        "thermal_half_life_min": 2368.664,
+        "thermal_half_life_fc": 175.8125,
+        "lysate_fold_change": 0.0817,
+        "facs_fold_change": 0.0447
+      }
+    },
+    {
+      "sampleId": "V022",
+      "mutation": "G197L",
+      "actual_score": 29.1515,
+      "predicted_score": 27.5971,
+      "error": 1.5544,
+      "labels": {
+        "thermal_half_life_min": 1959.214,
+        "thermal_half_life_fc": 145.4213,
+        "lysate_fold_change": 0.0914,
+        "facs_fold_change": 0.0767
+      }
+    },
+    {
+      "sampleId": "V011",
+      "mutation": "K195Q",
+      "actual_score": 19.7721,
+      "predicted_score": 16.8472,
+      "error": 2.9249,
+      "labels": {
+        "thermal_half_life_min": 1328.692,
+        "thermal_half_life_fc": 98.6212,
+        "lysate_fold_change": 0.0841,
+        "facs_fold_change": 0.0356
+      }
+    },
+    {
+      "sampleId": "V047",
+      "mutation": "M140E",
+      "actual_score": 16.8013,
+      "predicted_score": 12.8349,
+      "error": 3.9664,
+      "labels": {
+        "thermal_half_life_min": 1126.804,
+        "thermal_half_life_fc": 83.6363,
+        "lysate_fold_change": 0.0913,
+        "facs_fold_change": 0.0938
+      }
+    },
+    {
+      "sampleId": "V050",
+      "mutation": "K188G",
+      "actual_score": 11.1272,
+      "predicted_score": 6.3209,
+      "error": 4.8062,
+      "labels": {
+        "thermal_half_life_min": 744.177,
+        "thermal_half_life_fc": 55.236,
+        "lysate_fold_change": 0.0996,
+        "facs_fold_change": 0.1003
+      }
+    },
+    {
+      "sampleId": "V007",
+      "mutation": "L87R",
+      "actual_score": 1.4828,
+      "predicted_score": 3.71,
+      "error": 2.2271,
+      "labels": {
+        "thermal_half_life_min": 22.277,
+        "thermal_half_life_fc": 1.6535,
+        "lysate_fold_change": 1.8101,
+        "facs_fold_change": 1.0702
+      }
+    },
+    {
+      "sampleId": "V019",
+      "mutation": "Y17T",
+      "actual_score": 1.3942,
+      "predicted_score": 0.5162,
+      "error": 0.8779,
+      "labels": {
+        "thermal_half_life_min": 18.705,
+        "thermal_half_life_fc": 1.3884,
+        "lysate_fold_change": 1.7421,
+        "facs_fold_change": 1.0491
+      }
+    },
+    {
+      "sampleId": "V024",
+      "mutation": "S198Y",
+      "actual_score": 1.2406,
+      "predicted_score": 3.5053,
+      "error": 2.2647,
+      "labels": {
+        "thermal_half_life_min": 17.464,
+        "thermal_half_life_fc": 1.2962,
+        "lysate_fold_change": 1.3949,
+        "facs_fold_change": 1.0585
+      }
+    },
+    {
+      "sampleId": "V038",
+      "mutation": "W208L",
+      "actual_score": 1.1676,
+      "predicted_score": 0.8681,
+      "error": 0.2995,
+      "labels": {
+        "thermal_half_life_min": 16.572,
+        "thermal_half_life_fc": 1.2301,
+        "lysate_fold_change": 1.2792,
+        "facs_fold_change": 1.0247
+      }
+    },
+    {
+      "sampleId": "V045",
+      "mutation": "R215E",
+      "actual_score": 1.1541,
+      "predicted_score": 5.2431,
+      "error": 4.089,
+      "labels": {
+        "thermal_half_life_min": 15.972,
+        "thermal_half_life_fc": 1.1855,
+        "lysate_fold_change": 1.2844,
+        "facs_fold_change": 1.008
+      }
+    },
+    {
+      "sampleId": "V034",
+      "mutation": "H188Q",
+      "actual_score": 1.0171,
+      "predicted_score": 5.5496,
+      "error": 4.5325,
+      "labels": {
+        "thermal_half_life_min": 14.307,
+        "thermal_half_life_fc": 1.0619,
+        "lysate_fold_change": 0.986,
+        "facs_fold_change": 1.0258
+      }
+    },
+    {
+      "sampleId": "V015",
+      "mutation": "C236N",
+      "actual_score": 0.9994,
+      "predicted_score": 0.2368,
+      "error": 0.7627,
+      "labels": {
+        "thermal_half_life_min": 13.339,
+        "thermal_half_life_fc": 0.99,
+        "lysate_fold_change": 1.029,
+        "facs_fold_change": 0.9746
+      }
+    },
+    {
+      "sampleId": "V026",
+      "mutation": "T55H",
+      "actual_score": 0.9735,
+      "predicted_score": 0.2227,
+      "error": 0.7509,
+      "labels": {
+        "thermal_half_life_min": 13.558,
+        "thermal_half_life_fc": 1.0063,
+        "lysate_fold_change": 0.9787,
+        "facs_fold_change": 0.952
+      }
+    },
+    {
+      "sampleId": "V040",
+      "mutation": "Y231G",
+      "actual_score": 0.9546,
+      "predicted_score": 3.2825,
+      "error": 2.3279,
+      "labels": {
+        "thermal_half_life_min": 13.233,
+        "thermal_half_life_fc": 0.9822,
+        "lysate_fold_change": 0.948,
+        "facs_fold_change": 0.9473
+      }
+    },
+    {
+      "sampleId": "V012",
+      "mutation": "L170V",
+      "actual_score": 0.9224,
+      "predicted_score": 0.466,
+      "error": 0.4564,
+      "labels": {
+        "thermal_half_life_min": 13.169,
+        "thermal_half_life_fc": 0.9774,
+        "lysate_fold_change": 0.8683,
+        "facs_fold_change": 0.9491
+      }
+    },
+    {
+      "sampleId": "V021",
+      "mutation": "V271G",
+      "actual_score": 0.9189,
+      "predicted_score": 0.9147,
+      "error": 0.0043,
+      "labels": {
+        "thermal_half_life_min": 12.997,
+        "thermal_half_life_fc": 0.9647,
+        "lysate_fold_change": 0.8844,
+        "facs_fold_change": 0.9306
+      }
+    },
+    {
+      "sampleId": "V013",
+      "mutation": "C172S",
+      "actual_score": 0.8986,
+      "predicted_score": 0.279,
+      "error": 0.6197,
+      "labels": {
+        "thermal_half_life_min": 12.962,
+        "thermal_half_life_fc": 0.9621,
+        "lysate_fold_change": 0.8157,
+        "facs_fold_change": 0.9498
+      }
+    },
+    {
+      "sampleId": "V004",
+      "mutation": "D65T",
+      "actual_score": 0.8911,
+      "predicted_score": 0.0521,
+      "error": 0.839,
+      "labels": {
+        "thermal_half_life_min": 13.399,
+        "thermal_half_life_fc": 0.9945,
+        "lysate_fold_change": 0.767,
+        "facs_fold_change": 0.9636
+      }
+    },
+    {
+      "sampleId": "V039",
+      "mutation": "L227G",
+      "actual_score": 0.8875,
+      "predicted_score": 1.2144,
+      "error": 0.327,
+      "labels": {
+        "thermal_half_life_min": 12.887,
+        "thermal_half_life_fc": 0.9565,
+        "lysate_fold_change": 0.7869,
+        "facs_fold_change": 0.9535
+      }
+    },
+    {
+      "sampleId": "V032",
+      "mutation": "Q136L",
+      "actual_score": 0.8846,
+      "predicted_score": 0.492,
+      "error": 0.3926,
+      "labels": {
+        "thermal_half_life_min": 13.072,
+        "thermal_half_life_fc": 0.9703,
+        "lysate_fold_change": 0.794,
+        "facs_fold_change": 0.9324
+      }
+    },
+    {
+      "sampleId": "V046",
+      "mutation": "H174T",
+      "actual_score": 0.8811,
+      "predicted_score": 0.4694,
+      "error": 0.4117,
+      "labels": {
+        "thermal_half_life_min": 13.304,
+        "thermal_half_life_fc": 0.9875,
+        "lysate_fold_change": 0.7773,
+        "facs_fold_change": 0.9317
+      }
+    },
+    {
+      "sampleId": "V049",
+      "mutation": "L198R",
+      "actual_score": 0.8792,
+      "predicted_score": 3.71,
+      "error": 2.8308,
+      "labels": {
+        "thermal_half_life_min": 12.882,
+        "thermal_half_life_fc": 0.9562,
+        "lysate_fold_change": 0.7835,
+        "facs_fold_change": 0.9364
+      }
+    },
+    {
+      "sampleId": "V030",
+      "mutation": "E151W",
+      "actual_score": 0.877,
+      "predicted_score": 3.0642,
+      "error": 2.1871,
+      "labels": {
+        "thermal_half_life_min": 12.917,
+        "thermal_half_life_fc": 0.9588,
+        "lysate_fold_change": 0.7623,
+        "facs_fold_change": 0.9509
+      }
+    },
+    {
+      "sampleId": "V044",
+      "mutation": "W138D",
+      "actual_score": 0.8716,
+      "predicted_score": 1.7295,
+      "error": 0.8579,
+      "labels": {
+        "thermal_half_life_min": 12.795,
+        "thermal_half_life_fc": 0.9497,
+        "lysate_fold_change": 0.7761,
+        "facs_fold_change": 0.928
+      }
+    },
+    {
+      "sampleId": "V001",
+      "mutation": "K249T",
+      "actual_score": 0.8614,
+      "predicted_score": 2.1849,
+      "error": 1.3235,
+      "labels": {
+        "thermal_half_life_min": 12.966,
+        "thermal_half_life_fc": 0.9624,
+        "lysate_fold_change": 0.7726,
+        "facs_fold_change": 0.8997
+      }
+    },
+    {
+      "sampleId": "V008",
+      "mutation": "S139M",
+      "actual_score": 0.8501,
+      "predicted_score": 0.492,
+      "error": 0.3581,
+      "labels": {
+        "thermal_half_life_min": 12.741,
+        "thermal_half_life_fc": 0.9457,
+        "lysate_fold_change": 0.771,
+        "facs_fold_change": 0.8815
+      }
+    },
+    {
+      "sampleId": "V014",
+      "mutation": "P166M",
+      "actual_score": 0.8436,
+      "predicted_score": 0.492,
+      "error": 0.3516,
+      "labels": {
+        "thermal_half_life_min": 12.834,
+        "thermal_half_life_fc": 0.9526,
+        "lysate_fold_change": 0.7196,
+        "facs_fold_change": 0.9131
+      }
+    },
+    {
+      "sampleId": "V031",
+      "mutation": "W150D",
+      "actual_score": 0.8272,
+      "predicted_score": 1.7295,
+      "error": 0.9023,
+      "labels": {
+        "thermal_half_life_min": 12.855,
+        "thermal_half_life_fc": 0.9542,
+        "lysate_fold_change": 0.6881,
+        "facs_fold_change": 0.9029
+      }
+    },
+    {
+      "sampleId": "V018",
+      "mutation": "F125H",
+      "actual_score": 0.8257,
+      "predicted_score": 4.5542,
+      "error": 3.7285,
+      "labels": {
+        "thermal_half_life_min": 13.227,
+        "thermal_half_life_fc": 0.9817,
+        "lysate_fold_change": 0.6666,
+        "facs_fold_change": 0.9069
+      }
+    },
+    {
+      "sampleId": "V027",
+      "mutation": "H38A",
+      "actual_score": 0.8046,
+      "predicted_score": 0.8681,
+      "error": 0.0635,
+      "labels": {
+        "thermal_half_life_min": 12.68,
+        "thermal_half_life_fc": 0.9412,
+        "lysate_fold_change": 0.6817,
+        "facs_fold_change": 0.8593
+      }
+    },
+    {
+      "sampleId": "V023",
+      "mutation": "D152N",
+      "actual_score": 0.7933,
+      "predicted_score": -0.6786,
+      "error": 1.472,
+      "labels": {
+        "thermal_half_life_min": 12.792,
+        "thermal_half_life_fc": 0.9495,
+        "lysate_fold_change": 0.6336,
+        "facs_fold_change": 0.875
+      }
+    },
+    {
+      "sampleId": "V010",
+      "mutation": "D40G",
+      "actual_score": 0.7917,
+      "predicted_score": 0.864,
+      "error": 0.0723,
+      "labels": {
+        "thermal_half_life_min": 12.785,
+        "thermal_half_life_fc": 0.949,
+        "lysate_fold_change": 0.6185,
+        "facs_fold_change": 0.8862
+      }
+    },
+    {
+      "sampleId": "V009",
+      "mutation": "M18N",
+      "actual_score": 0.7764,
+      "predicted_score": 4.4587,
+      "error": 3.6823,
+      "labels": {
+        "thermal_half_life_min": 12.89,
+        "thermal_half_life_fc": 0.9567,
+        "lysate_fold_change": 0.5819,
+        "facs_fold_change": 0.8808
+      }
+    },
+    {
+      "sampleId": "V035",
+      "mutation": "P283H",
+      "actual_score": 0.773,
+      "predicted_score": 0.2227,
+      "error": 0.5503,
+      "labels": {
+        "thermal_half_life_min": 12.947,
+        "thermal_half_life_fc": 0.961,
+        "lysate_fold_change": 0.6258,
+        "facs_fold_change": 0.8262
+      }
+    },
+    {
+      "sampleId": "V028",
+      "mutation": "C215S",
+      "actual_score": 0.7609,
+      "predicted_score": 0.279,
+      "error": 0.4819,
+      "labels": {
+        "thermal_half_life_min": 12.803,
+        "thermal_half_life_fc": 0.9503,
+        "lysate_fold_change": 0.5826,
+        "facs_fold_change": 0.8444
+      }
+    },
+    {
+      "sampleId": "V036",
+      "mutation": "C41I",
+      "actual_score": 0.7471,
+      "predicted_score": 0.492,
+      "error": 0.2551,
+      "labels": {
+        "thermal_half_life_min": 13.321,
+        "thermal_half_life_fc": 0.9887,
+        "lysate_fold_change": 0.5617,
+        "facs_fold_change": 0.8117
+      }
+    },
+    {
+      "sampleId": "V043",
+      "mutation": "C136D",
+      "actual_score": 0.7448,
+      "predicted_score": 0.2368,
+      "error": 0.508,
+      "labels": {
+        "thermal_half_life_min": 13.359,
+        "thermal_half_life_fc": 0.9916,
+        "lysate_fold_change": 0.5883,
+        "facs_fold_change": 0.7779
+      }
+    },
+    {
+      "sampleId": "V025",
+      "mutation": "K127I",
+      "actual_score": 0.7412,
+      "predicted_score": 1.3351,
+      "error": 0.5939,
+      "labels": {
+        "thermal_half_life_min": 13.314,
+        "thermal_half_life_fc": 0.9882,
+        "lysate_fold_change": 0.5602,
+        "facs_fold_change": 0.7986
+      }
+    },
+    {
+      "sampleId": "V020",
+      "mutation": "F24T",
+      "actual_score": 0.7398,
+      "predicted_score": 3.5655,
+      "error": 2.8257,
+      "labels": {
+        "thermal_half_life_min": 13.184,
+        "thermal_half_life_fc": 0.9786,
+        "lysate_fold_change": 0.5754,
+        "facs_fold_change": 0.7848
+      }
+    },
+    {
+      "sampleId": "V002",
+      "mutation": "I90W",
+      "actual_score": 0.7284,
+      "predicted_score": 0.5385,
+      "error": 0.1899,
+      "labels": {
+        "thermal_half_life_min": 12.807,
+        "thermal_half_life_fc": 0.9506,
+        "lysate_fold_change": 0.6016,
+        "facs_fold_change": 0.7441
+      }
+    },
+    {
+      "sampleId": "V042",
+      "mutation": "K86S",
+      "actual_score": 0.7249,
+      "predicted_score": 1.9459,
+      "error": 1.2209,
+      "labels": {
+        "thermal_half_life_min": 13.17,
+        "thermal_half_life_fc": 0.9775,
+        "lysate_fold_change": 0.5137,
+        "facs_fold_change": 0.8099
+      }
+    },
+    {
+      "sampleId": "V037",
+      "mutation": "H113Y",
+      "actual_score": 0.7208,
+      "predicted_score": 0.8352,
+      "error": 0.1143,
+      "labels": {
+        "thermal_half_life_min": 13.225,
+        "thermal_half_life_fc": 0.9816,
+        "lysate_fold_change": 0.541,
+        "facs_fold_change": 0.7703
+      }
+    },
+    {
+      "sampleId": "V017",
+      "mutation": "H290L",
+      "actual_score": 0.7177,
+      "predicted_score": 0.283,
+      "error": 0.4347,
+      "labels": {
+        "thermal_half_life_min": 13.249,
+        "thermal_half_life_fc": 0.9834,
+        "lysate_fold_change": 0.505,
+        "facs_fold_change": 0.7975
+      }
+    },
+    {
+      "sampleId": "V048",
+      "mutation": "V225A",
+      "actual_score": 0.7021,
+      "predicted_score": 0.5988,
+      "error": 0.1033,
+      "labels": {
+        "thermal_half_life_min": 13.821,
+        "thermal_half_life_fc": 1.0258,
+        "lysate_fold_change": 0.5022,
+        "facs_fold_change": 0.7401
+      }
+    },
+    {
+      "sampleId": "V006",
+      "mutation": "S198R",
+      "actual_score": 0.6801,
+      "predicted_score": 3.1597,
+      "error": 2.4796,
+      "labels": {
+        "thermal_half_life_min": 14.129,
+        "thermal_half_life_fc": 1.0487,
+        "lysate_fold_change": 0.475,
+        "facs_fold_change": 0.7008
+      }
+    },
+    {
+      "sampleId": "V005",
+      "mutation": "T236A",
+      "actual_score": 0.6143,
+      "predicted_score": 0.6877,
+      "error": 0.0734,
+      "labels": {
+        "thermal_half_life_min": 15.913,
+        "thermal_half_life_fc": 1.1811,
+        "lysate_fold_change": 0.3516,
+        "facs_fold_change": 0.5936
+      }
+    },
+    {
+      "sampleId": "V029",
+      "mutation": "Q213K",
+      "actual_score": 0.0478,
+      "predicted_score": 2.8361,
+      "error": 2.7883,
+      "labels": {
+        "thermal_half_life_min": null,
+        "thermal_half_life_fc": null,
+        "lysate_fold_change": 0.0637,
+        "facs_fold_change": 0.032
+      }
+    }
+  ]
+}

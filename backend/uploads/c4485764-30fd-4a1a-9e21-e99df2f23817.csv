@@ -1,0 +1,22 @@
+# EnzymeML Stability Prediction Report
+# Protein: sp|P00761|TRYP_PIG Trypsin OS=S0s scrofa OX=9825
+# Date: 5/21/2026, 5:25:45 PM
+# Temperature: 38°C  |  pH: 7  |  Solvent: aqueous  |  Ionic Strength: 0.15 M
+# Sequence Length: 180 aa  |  Est. MW: 19.8 kDa
+# Model: EnzymeStability-v1.0 (Mock)
+Rank,Mutation,Position,Original AA,Substitution,Stability Score,Confidence,Activity Risk,ΔΔG (kcal/mol)
+1,G128V,128,G,V,0.946,0.554,Low,2.2
+2,D133N,133,D,N,0.827,0.666,Low,0.25
+3,G27S,27,G,S,0.779,0.541,Low,2.21
+4,P74A,74,P,A,0.729,0.807,Low,-1.11
+5,P13A,13,P,A,0.707,0.542,Low,-2.41
+6,C41T,41,C,T,0.645,0.669,Medium,-0.56
+7,G26S,26,G,S,0.601,0.949,Medium,-0.74
+8,D53S,53,D,S,0.588,0.577,Medium,-2.35
+9,P132G,132,P,G,0.491,0.501,Medium,1.8
+10,G21A,21,G,A,0.485,0.855,Medium,2.24
+11,E59Q,59,E,Q,0.388,0.875,High,0.35
+12,P106G,106,P,G,0.362,0.895,High,1.54
+13,G113V,113,G,V,0.342,0.747,High,2.01
+14,C7T,7,C,T,0.301,0.759,High,0.36
+15,C116T,116,C,T,0.267,0.702,High,-2.04

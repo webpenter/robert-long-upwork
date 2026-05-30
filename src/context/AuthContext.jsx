@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react';
+import api from '../services/apiClient';
 
 const AuthContext = createContext(null);
 
@@ -6,52 +7,44 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // On mount, restore session from stored token
   useEffect(() => {
-    const stored = localStorage.getItem('enzml_user');
-    if (stored) { try { setUser(JSON.parse(stored)); } catch {} }
-    setLoading(false);
+    const { access } = api.getTokens();
+    if (!access) {
+      setLoading(false);
+      return;
+    }
+    api.get('/auth/me')
+      .then(({ user }) => setUser(user))
+      .catch(() => api.clearTokens())
+      .finally(() => setLoading(false));
   }, []);
 
-  const login = (email, password) => {
-    const users = JSON.parse(localStorage.getItem('enzml_users') || '[]');
-    const found = users.find(u => u.email === email && u.password === password);
-    if (!found) throw new Error('Invalid email or password');
-    const { password: _pw, ...userData } = found;
-    setUser(userData);
-    localStorage.setItem('enzml_user', JSON.stringify(userData));
-    return userData;
+  const login = async (email, password) => {
+    const { user, accessToken, refreshToken } = await api.post('/auth/login', { email, password });
+    api.saveTokens(accessToken, refreshToken);
+    setUser(user);
+    return user;
   };
 
-  const register = (name, email, password) => {
-    const users = JSON.parse(localStorage.getItem('enzml_users') || '[]');
-    if (users.find(u => u.email === email)) throw new Error('Email already registered');
-    const newUser = {
-      id: `user_${Date.now()}`, name, email, password,
-      role: 'Scientist', institution: '', createdAt: new Date().toISOString(),
-    };
-    users.push(newUser);
-    localStorage.setItem('enzml_users', JSON.stringify(users));
-    const { password: _pw, ...userData } = newUser;
-    setUser(userData);
-    localStorage.setItem('enzml_user', JSON.stringify(userData));
-    return userData;
+  const register = async (name, email, password) => {
+    const { user, accessToken, refreshToken } = await api.post('/auth/register', { name, email, password });
+    api.saveTokens(accessToken, refreshToken);
+    setUser(user);
+    return user;
   };
 
-  const logout = () => {
+  const logout = async () => {
+    const { refresh } = api.getTokens();
+    try { await api.post('/auth/logout', { refreshToken: refresh }); } catch {}
+    api.clearTokens();
     setUser(null);
-    localStorage.removeItem('enzml_user');
   };
 
-  const updateUser = (updates) => {
-    const updated = { ...user, ...updates };
+  const updateUser = async (updates) => {
+    const { user: updated } = await api.patch('/users/me', updates);
     setUser(updated);
-    localStorage.setItem('enzml_user', JSON.stringify(updated));
-    const users = JSON.parse(localStorage.getItem('enzml_users') || '[]');
-    const idx = users.findIndex(u => u.id === user.id);
-    if (idx !== -1) {
-      users[idx] = { ...users[idx], ...updates };
-      localStorage.setItem('enzml_users', JSON.stringify(users));
-    }
+    return updated;
   };
 
   return (

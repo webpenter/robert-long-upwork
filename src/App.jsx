@@ -7,6 +7,12 @@ import Dashboard from './pages/Dashboard';
 import NewPrediction from './pages/NewPrediction';
 import Results from './pages/Results';
 import Settings from './pages/Settings';
+import Experiments from './pages/Experiments';
+import ExperimentDetail from './pages/ExperimentDetail';
+import ExperimentUpload from './pages/ExperimentUpload';
+import Variants from './pages/Variants';
+import VariantDetail from './pages/VariantDetail';
+import ModelManagement from './pages/ModelManagement';
 import Layout from './components/Layout';
 
 function ProtectedRoute({ children }) {
@@ -31,6 +37,12 @@ function AppRoutes() {
       <Route path="/predict" element={<ProtectedRoute><Layout><NewPrediction /></Layout></ProtectedRoute>} />
       <Route path="/results/:id" element={<ProtectedRoute><Layout><Results /></Layout></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><Layout><Settings /></Layout></ProtectedRoute>} />
+      <Route path="/experiments" element={<ProtectedRoute><Layout><Experiments /></Layout></ProtectedRoute>} />
+      <Route path="/experiments/new" element={<ProtectedRoute><Layout><ExperimentUpload /></Layout></ProtectedRoute>} />
+      <Route path="/experiments/:id" element={<ProtectedRoute><Layout><ExperimentDetail /></Layout></ProtectedRoute>} />
+      <Route path="/variants" element={<ProtectedRoute><Layout><Variants /></Layout></ProtectedRoute>} />
+      <Route path="/variants/:id" element={<ProtectedRoute><Layout><VariantDetail /></Layout></ProtectedRoute>} />
+      <Route path="/model" element={<ProtectedRoute><Layout><ModelManagement /></Layout></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   );

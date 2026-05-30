@@ -32,9 +32,9 @@ export default function Settings() {
 
   const set = (field) => (e) => setProfile(p => ({ ...p, [field]: e.target.value }));
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
-    updateUser(profile);
+    await updateUser({ name: profile.name, institution: profile.institution });
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
   };
@@ -62,19 +62,29 @@ export default function Settings() {
           </div>
 
           <div className="grid grid-cols-2 gap-4">
-            {[
-              { label: 'Full name', field: 'name', type: 'text', placeholder: 'Dr. Jane Smith' },
-              { label: 'Email', field: 'email', type: 'email', placeholder: 'you@institution.edu' },
-              { label: 'Institution', field: 'institution', type: 'text', placeholder: 'University or Company' },
-              { label: 'Role', field: 'role', type: 'text', placeholder: 'Senior Scientist' },
-            ].map(({ label, field, type, placeholder }) => (
-              <div key={field}>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">{label}</label>
-                <input type={type} value={profile[field]} onChange={set(field)}
-                  className="w-full px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder={placeholder} />
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Full name</label>
+              <input type="text" value={profile.name} onChange={set('name')}
+                className="w-full px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Dr. Jane Smith" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
+              <input type="email" value={profile.email} readOnly
+                className="w-full px-3.5 py-2.5 border border-gray-100 bg-gray-50 rounded-lg text-sm text-gray-500 cursor-not-allowed" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Institution</label>
+              <input type="text" value={profile.institution} onChange={set('institution')}
+                className="w-full px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="University or Company" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Account role</label>
+              <div className="px-3.5 py-2.5 border border-gray-100 bg-gray-50 rounded-lg text-sm text-gray-500">
+                {user?.role?.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase()) || 'External Customer'}
               </div>
-            ))}
+            </div>
           </div>
 
           <div className="flex items-center justify-between pt-2">
@@ -113,44 +123,84 @@ export default function Settings() {
 
       {/* Subscription */}
       <Section title="Subscription" icon={CreditCard}>
-        <div className="flex items-center justify-between p-4 bg-blue-50 border border-blue-200 rounded-xl mb-4">
+        {/* Current tier banner */}
+        <div className={`flex items-center justify-between p-4 rounded-xl mb-5 border ${
+          user?.tier === 'GOLD' ? 'bg-yellow-50 border-yellow-200' :
+          user?.tier === 'SILVER' ? 'bg-slate-50 border-slate-200' :
+          'bg-orange-50 border-orange-200'
+        }`}>
           <div>
-            <div className="font-semibold text-blue-900">Researcher Plan</div>
-            <div className="text-sm text-blue-700 mt-0.5">500 predictions/month · 5 active projects · Priority support</div>
-          </div>
-          <span className="bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded-full">ACTIVE</span>
-        </div>
-
-        <div className="grid grid-cols-3 gap-3 text-center text-sm">
-          {[
-            { label: 'Predictions used', value: '24 / 500' },
-            { label: 'Projects', value: '3 / 5' },
-            { label: 'Resets in', value: '8 days' },
-          ].map(({ label, value }) => (
-            <div key={label} className="bg-gray-50 rounded-lg p-3">
-              <div className="font-semibold text-gray-900">{value}</div>
-              <div className="text-xs text-gray-500 mt-0.5">{label}</div>
+            <div className={`font-semibold ${
+              user?.tier === 'GOLD' ? 'text-yellow-900' :
+              user?.tier === 'SILVER' ? 'text-slate-700' : 'text-orange-900'
+            }`}>{user?.tier || 'BRONZE'} Tier</div>
+            <div className={`text-sm mt-0.5 ${
+              user?.tier === 'GOLD' ? 'text-yellow-700' :
+              user?.tier === 'SILVER' ? 'text-slate-500' : 'text-orange-700'
+            }`}>
+              {user?.tier === 'GOLD' ? 'All features unlocked · AI chat assistant · Bespoke retraining' :
+               user?.tier === 'SILVER' ? 'Quantitative predictions · Confidence intervals · Hotspot map' :
+               'Ranked mutation list · Upgrade to unlock quantitative predictions'}
             </div>
-          ))}
+          </div>
+          <span className={`text-xs font-bold px-3 py-1 rounded-full ${
+            user?.tier === 'GOLD' ? 'bg-yellow-500 text-white' :
+            user?.tier === 'SILVER' ? 'bg-slate-500 text-white' : 'bg-orange-500 text-white'
+          }`}>{user?.tier || 'BRONZE'}</span>
         </div>
 
-        <div className="mt-4 pt-4 border-t border-gray-100">
-          <h4 className="text-sm font-medium text-gray-700 mb-3">Available plans</h4>
-          <div className="grid grid-cols-3 gap-3 text-sm">
-            {[
-              { name: 'Starter', price: 'Free', desc: '50 predictions/mo · 1 project', current: false },
-              { name: 'Researcher', price: '$49/mo', desc: '500 predictions/mo · 5 projects', current: true },
-              { name: 'Enterprise', price: 'Contact us', desc: 'Unlimited · Custom integrations', current: false },
-            ].map(({ name, price, desc, current }) => (
-              <div key={name} className={`border rounded-xl p-3 ${current ? 'border-blue-400 bg-blue-50' : 'border-gray-200'}`}>
-                <div className="font-semibold text-gray-900">{name}</div>
-                <div className="text-blue-600 font-bold mt-0.5">{price}</div>
-                <div className="text-xs text-gray-500 mt-1">{desc}</div>
-                {current && <div className="text-xs text-blue-600 font-medium mt-2">Current plan</div>}
+        {/* Tier comparison */}
+        <h4 className="text-sm font-medium text-gray-700 mb-3">Tier overview</h4>
+        <div className="grid grid-cols-3 gap-3 text-sm">
+          {[
+            {
+              name: 'Bronze',
+              color: 'orange',
+              desc: 'Provide enzyme sequence + target conditions',
+              features: ['Ranked mutation list', 'No quantitative scores'],
+            },
+            {
+              name: 'Silver',
+              color: 'slate',
+              desc: 'Contribute stability assay data',
+              features: ['Predicted ddG with confidence intervals', 'Activity-risk scores', 'Residue hotspot map', 'De-identified comparison data'],
+            },
+            {
+              name: 'Gold',
+              color: 'yellow',
+              desc: 'Full data contribution incl. sequences & activity',
+              features: ['All Silver features', 'AI chat assistant', 'Bespoke model retraining', 'Full cross-org data trends'],
+            },
+          ].map(({ name, color, desc, features }) => {
+            const isCurrent = (user?.tier || 'BRONZE') === name.toUpperCase();
+            return (
+              <div key={name} className={`border rounded-xl p-3 ${isCurrent
+                ? color === 'gold' || name === 'Gold' ? 'border-yellow-400 bg-yellow-50'
+                : name === 'Silver' ? 'border-slate-400 bg-slate-50'
+                : 'border-orange-400 bg-orange-50'
+                : 'border-gray-200'}`}>
+                <div className={`font-semibold ${
+                  name === 'Gold' ? 'text-yellow-700' : name === 'Silver' ? 'text-slate-700' : 'text-orange-700'
+                }`}>{name}</div>
+                <p className="text-xs text-gray-500 mt-1 mb-2 leading-relaxed">{desc}</p>
+                <ul className="space-y-1">
+                  {features.map(f => (
+                    <li key={f} className="text-xs text-gray-600 flex items-start gap-1">
+                      <span className="text-gray-300 flex-shrink-0 mt-0.5">›</span>
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+                {isCurrent && <div className="text-xs font-semibold mt-2.5 text-blue-600">Current tier</div>}
               </div>
-            ))}
-          </div>
+            );
+          })}
         </div>
+
+        <p className="text-xs text-gray-400 mt-4">
+          Tier thresholds are determined by the quantity, completeness, and quality of data contributed.
+          Contact your account manager to discuss tier requirements.
+        </p>
       </Section>
     </div>
   );

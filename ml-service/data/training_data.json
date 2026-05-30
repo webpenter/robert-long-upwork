@@ -1,0 +1,658 @@
+{
+  "exportedAt": "2026-05-26T16:03:03.302072",
+  "wtKinetic_hl": 13.47267227514196,
+  "wtLysate_ref": 9037.737749054942,
+  "wtFACS_pct": 91.7,
+  "variants": [
+    {
+      "sampleId": "V001",
+      "mutation": "K249T",
+      "from_aa": "K",
+      "to_aa": "T",
+      "position": 249,
+      "labels": {
+        "thermal_half_life_min": 12.966,
+        "thermal_half_life_fc": 0.9624,
+        "lysate_fold_change": 0.7726,
+        "facs_fold_change": 0.8997
+      }
+    },
+    {
+      "sampleId": "V002",
+      "mutation": "I90W",
+      "from_aa": "I",
+      "to_aa": "W",
+      "position": 90,
+      "labels": {
+        "thermal_half_life_min": 12.807,
+        "thermal_half_life_fc": 0.9506,
+        "lysate_fold_change": 0.6016,
+        "facs_fold_change": 0.7441
+      }
+    },
+    {
+      "sampleId": "V003",
+      "mutation": "F190Q",
+      "from_aa": "F",
+      "to_aa": "Q",
+      "position": 190,
+      "labels": {
+        "thermal_half_life_min": 3456.693,
+        "thermal_half_life_fc": 256.5707,
+        "lysate_fold_change": 0.0953,
+        "facs_fold_change": 0.1021
+      }
+    },
+    {
+      "sampleId": "V004",
+      "mutation": "D65T",
+      "from_aa": "D",
+      "to_aa": "T",
+      "position": 65,
+      "labels": {
+        "thermal_half_life_min": 13.399,
+        "thermal_half_life_fc": 0.9945,
+        "lysate_fold_change": 0.767,
+        "facs_fold_change": 0.9636
+      }
+    },
+    {
+      "sampleId": "V005",
+      "mutation": "T236A",
+      "from_aa": "T",
+      "to_aa": "A",
+      "position": 236,
+      "labels": {
+        "thermal_half_life_min": 15.913,
+        "thermal_half_life_fc": 1.1811,
+        "lysate_fold_change": 0.3516,
+        "facs_fold_change": 0.5936
+      }
+    },
+    {
+      "sampleId": "V006",
+      "mutation": "S198R",
+      "from_aa": "S",
+      "to_aa": "R",
+      "position": 198,
+      "labels": {
+        "thermal_half_life_min": 14.129,
+        "thermal_half_life_fc": 1.0487,
+        "lysate_fold_change": 0.475,
+        "facs_fold_change": 0.7008
+      }
+    },
+    {
+      "sampleId": "V007",
+      "mutation": "L87R",
+      "from_aa": "L",
+      "to_aa": "R",
+      "position": 87,
+      "labels": {
+        "thermal_half_life_min": 22.277,
+        "thermal_half_life_fc": 1.6535,
+        "lysate_fold_change": 1.8101,
+        "facs_fold_change": 1.0702
+      }
+    },
+    {
+      "sampleId": "V008",
+      "mutation": "S139M",
+      "from_aa": "S",
+      "to_aa": "M",
+      "position": 139,
+      "labels": {
+        "thermal_half_life_min": 12.741,
+        "thermal_half_life_fc": 0.9457,
+        "lysate_fold_change": 0.771,
+        "facs_fold_change": 0.8815
+      }
+    },
+    {
+      "sampleId": "V009",
+      "mutation": "M18N",
+      "from_aa": "M",
+      "to_aa": "N",
+      "position": 18,
+      "labels": {
+        "thermal_half_life_min": 12.89,
+        "thermal_half_life_fc": 0.9567,
+        "lysate_fold_change": 0.5819,
+        "facs_fold_change": 0.8808
+      }
+    },
+    {
+      "sampleId": "V010",
+      "mutation": "D40G",
+      "from_aa": "D",
+      "to_aa": "G",
+      "position": 40,
+      "labels": {
+        "thermal_half_life_min": 12.785,
+        "thermal_half_life_fc": 0.949,
+        "lysate_fold_change": 0.6185,
+        "facs_fold_change": 0.8862
+      }
+    },
+    {
+      "sampleId": "V011",
+      "mutation": "K195Q",
+      "from_aa": "K",
+      "to_aa": "Q",
+      "position": 195,
+      "labels": {
+        "thermal_half_life_min": 1328.692,
+        "thermal_half_life_fc": 98.6212,
+        "lysate_fold_change": 0.0841,
+        "facs_fold_change": 0.0356
+      }
+    },
+    {
+      "sampleId": "V012",
+      "mutation": "L170V",
+      "from_aa": "L",
+      "to_aa": "V",
+      "position": 170,
+      "labels": {
+        "thermal_half_life_min": 13.169,
+        "thermal_half_life_fc": 0.9774,
+        "lysate_fold_change": 0.8683,
+        "facs_fold_change": 0.9491
+      }
+    },
+    {
+      "sampleId": "V013",
+      "mutation": "C172S",
+      "from_aa": "C",
+      "to_aa": "S",
+      "position": 172,
+      "labels": {
+        "thermal_half_life_min": 12.962,
+        "thermal_half_life_fc": 0.9621,
+        "lysate_fold_change": 0.8157,
+        "facs_fold_change": 0.9498
+      }
+    },
+    {
+      "sampleId": "V014",
+      "mutation": "P166M",
+      "from_aa": "P",
+      "to_aa": "M",
+      "position": 166,
+      "labels": {
+        "thermal_half_life_min": 12.834,
+        "thermal_half_life_fc": 0.9526,
+        "lysate_fold_change": 0.7196,
+        "facs_fold_change": 0.9131
+      }
+    },
+    {
+      "sampleId": "V015",
+      "mutation": "C236N",
+      "from_aa": "C",
+      "to_aa": "N",
+      "position": 236,
+      "labels": {
+        "thermal_half_life_min": 13.339,
+        "thermal_half_life_fc": 0.99,
+        "lysate_fold_change": 1.029,
+        "facs_fold_change": 0.9746
+      }
+    },
+    {
+      "sampleId": "V016",
+      "mutation": "H16P",
+      "from_aa": "H",
+      "to_aa": "P",
+      "position": 16,
+      "labels": {
+        "thermal_half_life_min": 2368.664,
+        "thermal_half_life_fc": 175.8125,
+        "lysate_fold_change": 0.0817,
+        "facs_fold_change": 0.0447
+      }
+    },
+    {
+      "sampleId": "V017",
+      "mutation": "H290L",
+      "from_aa": "H",
+      "to_aa": "L",
+      "position": 290,
+      "labels": {
+        "thermal_half_life_min": 13.249,
+        "thermal_half_life_fc": 0.9834,
+        "lysate_fold_change": 0.505,
+        "facs_fold_change": 0.7975
+      }
+    },
+    {
+      "sampleId": "V018",
+      "mutation": "F125H",
+      "from_aa": "F",
+      "to_aa": "H",
+      "position": 125,
+      "labels": {
+        "thermal_half_life_min": 13.227,
+        "thermal_half_life_fc": 0.9817,
+        "lysate_fold_change": 0.6666,
+        "facs_fold_change": 0.9069
+      }
+    },
+    {
+      "sampleId": "V019",
+      "mutation": "Y17T",
+      "from_aa": "Y",
+      "to_aa": "T",
+      "position": 17,
+      "labels": {
+        "thermal_half_life_min": 18.705,
+        "thermal_half_life_fc": 1.3884,
+        "lysate_fold_change": 1.7421,
+        "facs_fold_change": 1.0491
+      }
+    },
+    {
+      "sampleId": "V020",
+      "mutation": "F24T",
+      "from_aa": "F",
+      "to_aa": "T",
+      "position": 24,
+      "labels": {
+        "thermal_half_life_min": 13.184,
+        "thermal_half_life_fc": 0.9786,
+        "lysate_fold_change": 0.5754,
+        "facs_fold_change": 0.7848
+      }
+    },
+    {
+      "sampleId": "V021",
+      "mutation": "V271G",
+      "from_aa": "V",
+      "to_aa": "G",
+      "position": 271,
+      "labels": {
+        "thermal_half_life_min": 12.997,
+        "thermal_half_life_fc": 0.9647,
+        "lysate_fold_change": 0.8844,
+        "facs_fold_change": 0.9306
+      }
+    },
+    {
+      "sampleId": "V022",
+      "mutation": "G197L",
+      "from_aa": "G",
+      "to_aa": "L",
+      "position": 197,
+      "labels": {
+        "thermal_half_life_min": 1959.214,
+        "thermal_half_life_fc": 145.4213,
+        "lysate_fold_change": 0.0914,
+        "facs_fold_change": 0.0767
+      }
+    },
+    {
+      "sampleId": "V023",
+      "mutation": "D152N",
+      "from_aa": "D",
+      "to_aa": "N",
+      "position": 152,
+      "labels": {
+        "thermal_half_life_min": 12.792,
+        "thermal_half_life_fc": 0.9495,
+        "lysate_fold_change": 0.6336,
+        "facs_fold_change": 0.875
+      }
+    },
+    {
+      "sampleId": "V024",
+      "mutation": "S198Y",
+      "from_aa": "S",
+      "to_aa": "Y",
+      "position": 198,
+      "labels": {
+        "thermal_half_life_min": 17.464,
+        "thermal_half_life_fc": 1.2962,
+        "lysate_fold_change": 1.3949,
+        "facs_fold_change": 1.0585
+      }
+    },
+    {
+      "sampleId": "V025",
+      "mutation": "K127I",
+      "from_aa": "K",
+      "to_aa": "I",
+      "position": 127,
+      "labels": {
+        "thermal_half_life_min": 13.314,
+        "thermal_half_life_fc": 0.9882,
+        "lysate_fold_change": 0.5602,
+        "facs_fold_change": 0.7986
+      }
+    },
+    {
+      "sampleId": "V026",
+      "mutation": "T55H",
+      "from_aa": "T",
+      "to_aa": "H",
+      "position": 55,
+      "labels": {
+        "thermal_half_life_min": 13.558,
+        "thermal_half_life_fc": 1.0063,
+        "lysate_fold_change": 0.9787,
+        "facs_fold_change": 0.952
+      }
+    },
+    {
+      "sampleId": "V027",
+      "mutation": "H38A",
+      "from_aa": "H",
+      "to_aa": "A",
+      "position": 38,
+      "labels": {
+        "thermal_half_life_min": 12.68,
+        "thermal_half_life_fc": 0.9412,
+        "lysate_fold_change": 0.6817,
+        "facs_fold_change": 0.8593
+      }
+    },
+    {
+      "sampleId": "V028",
+      "mutation": "C215S",
+      "from_aa": "C",
+      "to_aa": "S",
+      "position": 215,
+      "labels": {
+        "thermal_half_life_min": 12.803,
+        "thermal_half_life_fc": 0.9503,
+        "lysate_fold_change": 0.5826,
+        "facs_fold_change": 0.8444
+      }
+    },
+    {
+      "sampleId": "V029",
+      "mutation": "Q213K",
+      "from_aa": "Q",
+      "to_aa": "K",
+      "position": 213,
+      "labels": {
+        "thermal_half_life_min": null,
+        "thermal_half_life_fc": null,
+        "lysate_fold_change": 0.0637,
+        "facs_fold_change": 0.032
+      }
+    },
+    {
+      "sampleId": "V030",
+      "mutation": "E151W",
+      "from_aa": "E",
+      "to_aa": "W",
+      "position": 151,
+      "labels": {
+        "thermal_half_life_min": 12.917,
+        "thermal_half_life_fc": 0.9588,
+        "lysate_fold_change": 0.7623,
+        "facs_fold_change": 0.9509
+      }
+    },
+    {
+      "sampleId": "V031",
+      "mutation": "W150D",
+      "from_aa": "W",
+      "to_aa": "D",
+      "position": 150,
+      "labels": {
+        "thermal_half_life_min": 12.855,
+        "thermal_half_life_fc": 0.9542,
+        "lysate_fold_change": 0.6881,
+        "facs_fold_change": 0.9029
+      }
+    },
+    {
+      "sampleId": "V032",
+      "mutation": "Q136L",
+      "from_aa": "Q",
+      "to_aa": "L",
+      "position": 136,
+      "labels": {
+        "thermal_half_life_min": 13.072,
+        "thermal_half_life_fc": 0.9703,
+        "lysate_fold_change": 0.794,
+        "facs_fold_change": 0.9324
+      }
+    },
+    {
+      "sampleId": "V033",
+      "mutation": "E76K",
+      "from_aa": "E",
+      "to_aa": "K",
+      "position": 76,
+      "labels": {
+        "thermal_half_life_min": 3097.409,
+        "thermal_half_life_fc": 229.9031,
+        "lysate_fold_change": 0.0912,
+        "facs_fold_change": 0.0738
+      }
+    },
+    {
+      "sampleId": "V034",
+      "mutation": "H188Q",
+      "from_aa": "H",
+      "to_aa": "Q",
+      "position": 188,
+      "labels": {
+        "thermal_half_life_min": 14.307,
+        "thermal_half_life_fc": 1.0619,
+        "lysate_fold_change": 0.986,
+        "facs_fold_change": 1.0258
+      }
+    },
+    {
+      "sampleId": "V035",
+      "mutation": "P283H",
+      "from_aa": "P",
+      "to_aa": "H",
+      "position": 283,
+      "labels": {
+        "thermal_half_life_min": 12.947,
+        "thermal_half_life_fc": 0.961,
+        "lysate_fold_change": 0.6258,
+        "facs_fold_change": 0.8262
+      }
+    },
+    {
+      "sampleId": "V036",
+      "mutation": "C41I",
+      "from_aa": "C",
+      "to_aa": "I",
+      "position": 41,
+      "labels": {
+        "thermal_half_life_min": 13.321,
+        "thermal_half_life_fc": 0.9887,
+        "lysate_fold_change": 0.5617,
+        "facs_fold_change": 0.8117
+      }
+    },
+    {
+      "sampleId": "V037",
+      "mutation": "H113Y",
+      "from_aa": "H",
+      "to_aa": "Y",
+      "position": 113,
+      "labels": {
+        "thermal_half_life_min": 13.225,
+        "thermal_half_life_fc": 0.9816,
+        "lysate_fold_change": 0.541,
+        "facs_fold_change": 0.7703
+      }
+    },
+    {
+      "sampleId": "V038",
+      "mutation": "W208L",
+      "from_aa": "W",
+      "to_aa": "L",
+      "position": 208,
+      "labels": {
+        "thermal_half_life_min": 16.572,
+        "thermal_half_life_fc": 1.2301,
+        "lysate_fold_change": 1.2792,
+        "facs_fold_change": 1.0247
+      }
+    },
+    {
+      "sampleId": "V039",
+      "mutation": "L227G",
+      "from_aa": "L",
+      "to_aa": "G",
+      "position": 227,
+      "labels": {
+        "thermal_half_life_min": 12.887,
+        "thermal_half_life_fc": 0.9565,
+        "lysate_fold_change": 0.7869,
+        "facs_fold_change": 0.9535
+      }
+    },
+    {
+      "sampleId": "V040",
+      "mutation": "Y231G",
+      "from_aa": "Y",
+      "to_aa": "G",
+      "position": 231,
+      "labels": {
+        "thermal_half_life_min": 13.233,
+        "thermal_half_life_fc": 0.9822,
+        "lysate_fold_change": 0.948,
+        "facs_fold_change": 0.9473
+      }
+    },
+    {
+      "sampleId": "V041",
+      "mutation": "G234R",
+      "from_aa": "G",
+      "to_aa": "R",
+      "position": 234,
+      "labels": {
+        "thermal_half_life_min": 6465.815,
+        "thermal_half_life_fc": 479.9207,
+        "lysate_fold_change": 0.0744,
+        "facs_fold_change": 0.0502
+      }
+    },
+    {
+      "sampleId": "V042",
+      "mutation": "K86S",
+      "from_aa": "K",
+      "to_aa": "S",
+      "position": 86,
+      "labels": {
+        "thermal_half_life_min": 13.17,
+        "thermal_half_life_fc": 0.9775,
+        "lysate_fold_change": 0.5137,
+        "facs_fold_change": 0.8099
+      }
+    },
+    {
+      "sampleId": "V043",
+      "mutation": "C136D",
+      "from_aa": "C",
+      "to_aa": "D",
+      "position": 136,
+      "labels": {
+        "thermal_half_life_min": 13.359,
+        "thermal_half_life_fc": 0.9916,
+        "lysate_fold_change": 0.5883,
+        "facs_fold_change": 0.7779
+      }
+    },
+    {
+      "sampleId": "V044",
+      "mutation": "W138D",
+      "from_aa": "W",
+      "to_aa": "D",
+      "position": 138,
+      "labels": {
+        "thermal_half_life_min": 12.795,
+        "thermal_half_life_fc": 0.9497,
+        "lysate_fold_change": 0.7761,
+        "facs_fold_change": 0.928
+      }
+    },
+    {
+      "sampleId": "V045",
+      "mutation": "R215E",
+      "from_aa": "R",
+      "to_aa": "E",
+      "position": 215,
+      "labels": {
+        "thermal_half_life_min": 15.972,
+        "thermal_half_life_fc": 1.1855,
+        "lysate_fold_change": 1.2844,
+        "facs_fold_change": 1.008
+      }
+    },
+    {
+      "sampleId": "V046",
+      "mutation": "H174T",
+      "from_aa": "H",
+      "to_aa": "T",
+      "position": 174,
+      "labels": {
+        "thermal_half_life_min": 13.304,
+        "thermal_half_life_fc": 0.9875,
+        "lysate_fold_change": 0.7773,
+        "facs_fold_change": 0.9317
+      }
+    },
+    {
+      "sampleId": "V047",
+      "mutation": "M140E",
+      "from_aa": "M",
+      "to_aa": "E",
+      "position": 140,
+      "labels": {
+        "thermal_half_life_min": 1126.804,
+        "thermal_half_life_fc": 83.6363,
+        "lysate_fold_change": 0.0913,
+        "facs_fold_change": 0.0938
+      }
+    },
+    {
+      "sampleId": "V048",
+      "mutation": "V225A",
+      "from_aa": "V",
+      "to_aa": "A",
+      "position": 225,
+      "labels": {
+        "thermal_half_life_min": 13.821,
+        "thermal_half_life_fc": 1.0258,
+        "lysate_fold_change": 0.5022,
+        "facs_fold_change": 0.7401
+      }
+    },
+    {
+      "sampleId": "V049",
+      "mutation": "L198R",
+      "from_aa": "L",
+      "to_aa": "R",
+      "position": 198,
+      "labels": {
+        "thermal_half_life_min": 12.882,
+        "thermal_half_life_fc": 0.9562,
+        "lysate_fold_change": 0.7835,
+        "facs_fold_change": 0.9364
+      }
+    },
+    {
+      "sampleId": "V050",
+      "mutation": "K188G",
+      "from_aa": "K",
+      "to_aa": "G",
+      "position": 188,
+      "labels": {
+        "thermal_half_life_min": 744.177,
+        "thermal_half_life_fc": 55.236,
+        "lysate_fold_change": 0.0996,
+        "facs_fold_change": 0.1003
+      }
+    }
+  ]
+}
