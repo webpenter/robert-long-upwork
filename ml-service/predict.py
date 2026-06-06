@@ -4,7 +4,7 @@ Loads the trained model and predicts stability for all possible
 single-point mutations of a given FASTA sequence.
 """
 
-import json, os
+import json, math, os
 import numpy as np
 import joblib
 
@@ -12,13 +12,16 @@ from features import extract, AMINO_ACIDS, BLOSUM62, KD, VOL, CHARGE
 
 MODELS_DIR = os.path.join(os.path.dirname(__file__), 'models')
 
-_model       = None
-_rf_uncert   = None
-_meta        = None
+_model           = None
+_rf_uncert       = None
+_meta            = None
+_fingerprints    = None   # list of L2-normalised 20-dim AA-composition vectors
+_sim_threshold   = 0.70
+_use_esm         = False  # True when the loaded model was trained with ESM-2 features
 
 
 def _load():
-    global _model, _rf_uncert, _meta
+    global _model, _rf_uncert, _meta, _fingerprints, _sim_threshold, _use_esm
     model_path = os.path.join(MODELS_DIR, 'stability_model.joblib')
     rf_path    = os.path.join(MODELS_DIR, 'rf_for_uncertainty.joblib')
     meta_path  = os.path.join(MODELS_DIR, 'training_meta.json')
@@ -32,11 +35,40 @@ def _load():
     with open(meta_path) as f:
         _meta = json.load(f)
 
+    raw = _meta.get('trainingFingerprints', [])
+    _fingerprints  = np.array(raw, dtype=np.float32) if raw else None
+    _sim_threshold = _meta.get('similarityThreshold', 0.70)
+    _use_esm       = _meta.get('esmUsed', False)
+
+
+_AA_ORDER = list('ACDEFGHIKLMNPQRSTVWY')
 
 def model_version() -> str:
     if _meta is None:
         _load()
     return _meta.get('modelVersion', 'v1.0')
+
+
+def _sequence_similarity(seq: str) -> float:
+    """
+    Cosine similarity between the query sequence's AA composition
+    and the nearest training sequence. Returns 1.0 if no fingerprints
+    are stored (old model without similarity data).
+    """
+    if _fingerprints is None or len(_fingerprints) == 0:
+        return 1.0
+
+    counts = np.array([seq.count(aa) for aa in _AA_ORDER], dtype=np.float32)
+    total  = counts.sum() or 1.0
+    vec    = counts / total
+    norm   = np.linalg.norm(vec)
+    if norm == 0:
+        return 0.0
+    vec = vec / norm
+
+    # Cosine similarity = dot product (both vectors are already L2-normalised)
+    similarities = _fingerprints @ vec
+    return float(similarities.max())
 
 
 def _uncertainty(feat_vec: np.ndarray) -> float:
@@ -52,7 +84,7 @@ def _uncertainty(feat_vec: np.ndarray) -> float:
 
 # ── Structural reason text (physicochemical) ─────────────────────────────────
 
-def _structural_reason(from_aa, to_aa, feat_vec, score) -> str:
+def _structural_reason(from_aa, to_aa, feat_vec, ddg) -> str:
     blosum   = feat_vec[0]
     d_kd     = feat_vec[1]
     d_vol    = feat_vec[2]
@@ -138,6 +170,24 @@ def predict_for_sequence(sequence: str, conditions: dict, tier: str) -> dict:
     if bad:
         raise ValueError(f'Non-standard residues: {set(bad)}')
 
+    # ── Normalise user conditions once (shared across all mutations) ─────────
+    from features import TEMP_REF_K, TEMP_SCALE, PH_REF, PH_SCALE
+    user_temp_c = conditions.get('temperature', 25.0)
+    user_ph     = conditions.get('ph', 7.0)
+    norm_conds  = {
+        'temp_norm': ((user_temp_c + 273.15) - TEMP_REF_K) / TEMP_SCALE,
+        'ph_norm':   (user_ph - PH_REF) / PH_SCALE,
+    }
+
+    # ── ESM-2 masked marginals (one batched forward pass for the whole sequence) ──
+    _esm_marginals = None
+    if _use_esm:
+        try:
+            from esm_embedder import get_masked_marginals
+            _esm_marginals = get_masked_marginals(seq)
+        except ImportError:
+            pass   # ESM was used at training but not available now; scores fall back to 0.0
+
     # ── Pass 1: score every possible substitution ─────────────────────────
     per_position = []
 
@@ -148,7 +198,14 @@ def predict_for_sequence(sequence: str, conditions: dict, tier: str) -> dict:
         for to_aa in AMINO_ACIDS:
             if to_aa == from_aa:
                 continue
-            feat = extract(from_aa, to_aa, position, seq)
+            esm_sc = None
+            if _use_esm and _esm_marginals is not None:
+                lp_to   = _esm_marginals.get((i, to_aa),   -20.0)
+                lp_from = _esm_marginals.get((i, from_aa),  -20.0)
+                esm_sc  = float(lp_to - lp_from)
+            elif _use_esm:
+                esm_sc = 0.0   # ESM trained but unavailable at inference
+            feat = extract(from_aa, to_aa, position, seq, norm_conds, esm_sc)
             pred = float(_model.predict(feat.reshape(1, -1))[0])
             scores_at_pos.append((to_aa, feat, pred))
 
@@ -163,9 +220,14 @@ def predict_for_sequence(sequence: str, conditions: dict, tier: str) -> dict:
             'mean_score': mean_score,
         })
 
-    # ── Sort by best_score descending → top 20 candidates ────────────────
+    # ── Sort by best_score descending, keep only stabilising (best_score > 0) ──
+    # S1724 internal convention: positive best_score = stabilising.
+    # We output ddG in traditional biochemistry convention: negative = stabilising,
+    # so we negate at output. Filter to genuinely stabilising positions first;
+    # if none exist (e.g. very short fragment) fall back to least-destabilising.
     sorted_pos = sorted(per_position, key=lambda x: x['best_score'], reverse=True)
-    top20 = sorted_pos[:20]
+    stabilising = [e for e in sorted_pos if e['best_score'] > 0]
+    top20 = (stabilising if stabilising else sorted_pos)[:20]
 
     candidates = []
     for rank, entry in enumerate(top20, start=1):
@@ -173,7 +235,7 @@ def predict_for_sequence(sequence: str, conditions: dict, tier: str) -> dict:
         from_aa  = entry['from_aa']
         to_aa    = entry['best_to']
         feat     = entry['best_feat']
-        score    = entry['best_score']
+        ddg      = entry['best_score']     # internal S1724: positive = stabilising
 
         blosum   = float(feat[0])
         d_kd     = float(feat[1])
@@ -182,14 +244,17 @@ def predict_for_sequence(sequence: str, conditions: dict, tier: str) -> dict:
 
         uncert   = _uncertainty(feat)
 
-        # Convert fold-change to ddG-like metric: ddG ≈ -RT*ln(score)
-        # R=1.987 cal/mol/K, T=343K (70°C); RT in kcal/mol ≈ 0.681 at 70°C
-        # We use RT at 37°C (310K) ≈ 0.616 as physiological reference
-        RT = 0.616
-        ddG = round(-RT * float(np.log(max(score, 0.01))), 2)
+        # Output convention: negative ddG = stabilising (traditional biochemistry).
+        # Negate so the UI ("more negative = more stable") is correct.
+        ddG_out = round(-ddg, 2)
 
-        # dTm approximation: empirically ~2.5 °C per unit fold-change above WT
-        dTm = round((score - 1.0) * 2.5, 2)
+        # Backward-compat fold-change: exp(ddG_internal / RT) at 37°C
+        RT = 0.616
+        fold_change = float(np.exp(min(ddg / RT, 10)))   # cap to avoid overflow
+
+        # dTm approximation: ~2.5 °C per kcal/mol at typical Tm.
+        # Positive dTm = Tm increases = stabilising. Uses internal ddg (positive = stabilising).
+        dTm = round(ddg * 2.5, 2)
 
         cand = {
             'rank':          rank,
@@ -200,14 +265,14 @@ def predict_for_sequence(sequence: str, conditions: dict, tier: str) -> dict:
         }
 
         if tier in ('SILVER', 'GOLD'):
-            cand['predictedFoldChange']      = round(score, 4)
-            cand['ddG']                      = ddG
+            cand['predictedFoldChange']      = round(fold_change, 4)
+            cand['ddG']                      = ddG_out
             cand['predictedStabilityChange'] = dTm
-            cand['confidenceLow']            = round(ddG - uncert * 0.5, 2)
-            cand['confidenceHigh']           = round(ddG + uncert * 0.5, 2)
+            cand['confidenceLow']            = round(ddG_out - uncert * 0.5, 2)
+            cand['confidenceHigh']           = round(ddG_out + uncert * 0.5, 2)
             cand['activityRisk']             = _activity_risk(from_aa, to_aa, d_chg)
             cand['supportingVariants']       = _supporting_variants(blosum)
-            cand['structuralReason']         = _structural_reason(from_aa, to_aa, feat, score)
+            cand['structuralReason']         = _structural_reason(from_aa, to_aa, feat, ddg)
 
         candidates.append(cand)
 
@@ -215,11 +280,13 @@ def predict_for_sequence(sequence: str, conditions: dict, tier: str) -> dict:
     hotspot_map = []
     if tier in ('SILVER', 'GOLD'):
         for entry in sorted(per_position, key=lambda x: x['position']):
-            # mutational tolerance: most mutations near-neutral → high tolerance
+            # mutational tolerance: positions where mutations are near-neutral on average
+            # mean_score is now mean ddG; 0 = neutral, negative = average destabilising
             mean_s = entry['mean_score']
-            tolerance = float(1.0 / (1.0 + np.exp(-(mean_s - 1.0) * 5)))
-            # stabilisation potential: best substitution clearly above WT
-            potential = float(min(1.0, max(0.0, (entry['best_score'] - 1.0) / 0.8)))
+            tolerance = float(1.0 / (1.0 + np.exp(-mean_s * 3)))
+            # stabilisation potential: how much can the best mutation gain (kcal/mol)
+            # cap at 2 kcal/mol → potential = 1.0
+            potential = float(min(1.0, max(0.0, entry['best_score'] / 2.0)))
             hotspot_map.append({
                 'position':              entry['position'],
                 'residue':               entry['from_aa'],
@@ -227,9 +294,26 @@ def predict_for_sequence(sequence: str, conditions: dict, tier: str) -> dict:
                 'stabilizationPotential': round(potential, 3),
             })
 
+    sim_score = _sequence_similarity(seq)
+
+    # Flag when requested conditions are outside the training distribution.
+    # S1724 temperature range: ~288–303 K (15–30 °C). Beyond ±1.5 norm units
+    # the model is extrapolating; tree models clamp predictions at leaf edges.
+    temp_norm_val = norm_conds['temp_norm']
+    ph_norm_val   = norm_conds['ph_norm']
+    cond_outside  = abs(temp_norm_val) > 1.5 or abs(ph_norm_val) > 1.5
+
     return {
-        'candidates':     candidates,
-        'hotspotMap':     hotspot_map,
-        'modelVersion':   model_version(),
-        'nTrainingVars':  _meta.get('nVariants', 50) if _meta else 50,
+        'candidates':            candidates,
+        'hotspotMap':            hotspot_map,
+        'modelVersion':          model_version(),
+        'nTrainingVars':         _meta.get('nVariants', 50) if _meta else 50,
+        'similarityScore':       round(sim_score, 3),
+        'similarityWarning':     sim_score < _sim_threshold,
+        'conditionOutOfRange':   cond_outside,
+        'conditionNote':         (
+            f'Requested conditions (T={user_temp_c}°C, pH={user_ph}) are outside '
+            f'the training distribution (S1724: 15–30°C, pH 5–8). '
+            f'Predictions are extrapolated; treat with additional caution.'
+        ) if cond_outside else '',
     }

@@ -238,8 +238,8 @@ export default function Results() {
 
   const chartData = mutations.slice(0, 10).map(m => ({
     name: m.mutation,
-    stability: parseFloat(((m.predictedStabilityChange ?? m.stabilityScore ?? 0) * 10 + 50).toFixed(1)),
-    confidence: parseFloat(((m.confidence ?? 0.5) * 100).toFixed(1)),
+    dTm: parseFloat((m.predictedStabilityChange ?? 0).toFixed(2)),
+    activityRisk: m.activityRisk != null ? parseFloat((m.activityRisk * 100).toFixed(1)) : null,
   }));
 
   const handleSort = (key) => {
@@ -270,6 +270,34 @@ export default function Results() {
           Export CSV
         </button>
       </div>
+
+      {/* Similarity warning banner */}
+      {prediction.similarityWarning && (
+        <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl p-4">
+          <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-semibold text-amber-800">Low similarity to training data</p>
+            <p className="text-xs text-amber-700 mt-0.5">
+              This sequence has low similarity to proteins in the training set
+              (score: {prediction.similarityScore?.toFixed(2) ?? '—'} / 1.00, threshold: 0.70).
+              Predictions may be less reliable — treat with additional caution and validate experimentally.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Condition out-of-range warning */}
+      {prediction.conditionOutOfRange && (
+        <div className="flex items-start gap-3 bg-blue-50 border border-blue-200 rounded-xl p-4">
+          <AlertTriangle className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-semibold text-blue-800">Conditions outside training range</p>
+            <p className="text-xs text-blue-700 mt-0.5">
+              {prediction.conditionNote || 'Requested conditions are outside the training distribution. Predictions are extrapolated.'}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Metadata card */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
@@ -369,16 +397,18 @@ export default function Results() {
       {/* Charts */}
       <div className="grid grid-cols-2 gap-5">
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-          <h3 className="font-semibold text-gray-900 mb-4">Stability & Confidence — Top 10</h3>
+          <h3 className="font-semibold text-gray-900 mb-1">Predicted ΔTm — Top 10</h3>
+          <p className="text-xs text-gray-400 mb-3">Positive = predicted Tm increase (stabilising)</p>
           <ResponsiveContainer width="100%" height={240}>
-            <BarChart data={chartData} margin={{ top: 0, right: 10, left: -15, bottom: 55 }}>
+            <BarChart data={chartData} margin={{ top: 0, right: 10, left: -10, bottom: 55 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               <XAxis dataKey="name" angle={-45} textAnchor="end" tick={{ fontSize: 10 }} />
-              <YAxis domain={[0, 100]} unit="%" tick={{ fontSize: 10 }} />
-              <Tooltip formatter={(v, n) => [`${v}%`, n === 'stability' ? 'Stability' : 'Confidence']} />
-              <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
-              <Bar dataKey="stability" name="Stability" fill="#3b82f6" radius={[3, 3, 0, 0]} />
-              <Bar dataKey="confidence" name="Confidence" fill="#8b5cf6" radius={[3, 3, 0, 0]} />
+              <YAxis unit="°C" tick={{ fontSize: 10 }} />
+              <Tooltip formatter={(v) => [`${v} °C`, 'ΔTm']} />
+              <Bar dataKey="dTm" name="ΔTm (°C)" radius={[3, 3, 0, 0]}
+                fill="#3b82f6"
+                label={false}
+              />
             </BarChart>
           </ResponsiveContainer>
         </div>

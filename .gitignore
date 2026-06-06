@@ -1,6 +1,12 @@
 .env
 .env.*
 
+# Client-proprietary data — never commit
+client-data/
+
+# User-uploaded files
+backend/uploads/
+
 # Python
 __pycache__/
 *.pyc

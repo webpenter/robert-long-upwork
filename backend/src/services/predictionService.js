@@ -188,17 +188,21 @@ async function runPrediction(predictionId, tier) {
       result = buildFallbackPrediction(seq, tier);
     }
 
-    const { candidates, hotspotMap, modelVersion, nTrainingVars } = result;
+    const { candidates, hotspotMap, modelVersion, nTrainingVars,
+            similarityWarning = false, similarityScore = 1.0,
+            conditionOutOfRange = false, conditionNote = '' } = result;
 
     await Prediction.findByIdAndUpdate(predictionId, {
-      status:           'COMPLETED',
+      status:             'COMPLETED',
       candidates,
-      candidatesCount:  candidates.length,
-      hotspotMap:       tier === 'BRONZE' ? [] : hotspotMap,
-      modelVersion:     modelVersion + (usedMLService ? '' : ' [fallback]'),
-      similarityWarning: false,
-      similarityScore:   1.0,
-      completedAt:       new Date(),
+      candidatesCount:    candidates.length,
+      hotspotMap:         tier === 'BRONZE' ? [] : hotspotMap,
+      modelVersion:       modelVersion + (usedMLService ? '' : ' [fallback]'),
+      similarityWarning,
+      similarityScore,
+      conditionOutOfRange,
+      conditionNote,
+      completedAt:        new Date(),
     });
 
   } catch (err) {

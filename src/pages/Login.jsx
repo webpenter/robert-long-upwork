@@ -12,31 +12,21 @@ export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  const ensureDemoUser = () => {
-    const users = JSON.parse(localStorage.getItem('enzml_users') || '[]');
-    if (!users.find(u => u.email === 'demo@enzymeml.com')) {
-      users.push({ id: 'demo_user', name: 'Dr. Ross Klauer, PhD', email: 'demo@enzymeml.com', password: 'demo123', role: 'Senior Scientist', institution: 'Stanford University', createdAt: new Date().toISOString() });
-      localStorage.setItem('enzml_users', JSON.stringify(users));
-    }
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
     try {
-      ensureDemoUser();
-      login(email, password);
+      await login(email, password);
       navigate('/dashboard');
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'Invalid email or password');
     } finally {
       setLoading(false);
     }
   };
 
   const handleDemo = () => {
-    ensureDemoUser();
     setEmail('demo@enzymeml.com');
     setPassword('demo123');
   };

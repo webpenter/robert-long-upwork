@@ -255,10 +255,10 @@ export default function ExperimentDetail() {
     formData.append('file', uploadFile);
     formData.append('experimentId', id);
     try {
-      const token = localStorage.getItem('enzml_access_token');
+      const { access } = api.getTokens();
       const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:4000/api'}/uploads`, {
         method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        headers: access ? { Authorization: `Bearer ${access}` } : {},
         body: formData,
       });
       const data = await res.json();

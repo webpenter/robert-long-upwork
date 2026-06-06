@@ -60,6 +60,8 @@ const predictionSchema = new mongoose.Schema({
 
   similarityWarning: { type: Boolean, default: false },
   similarityScore: { type: Number },
+  conditionOutOfRange: { type: Boolean, default: false },
+  conditionNote: { type: String },
 
   // Results
   candidatesCount: { type: Number, default: 0 },

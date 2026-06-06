@@ -2,6 +2,12 @@
 Mutation feature engineering.
 All features are derived from the mutation itself (from_aa, to_aa, position)
 and the local sequence context around the mutation site.
+
+Feature vector layout (61 dims max):
+  [0-55]  physicochemical (blosum, KD, vol, charge, burial, flags, one-hot)
+  [56-58] secondary structure one-hot: [sst_helix, sst_strand, sst_loop]
+  [59]    relative solvent accessibility (RSA, 0=buried, 1=surface)
+  [60]    esm_masked_marginal (optional — only when model trained with ESM-2)
 """
 
 import numpy as np
@@ -53,14 +59,45 @@ CHARGE = {
     'L':0,'K':1,'M':0,'F':0,'P':0,'S':0,'T':0,'W':0,'Y':0,'V':0,
 }
 
+# Chou-Fasman helix (Pα) and strand (Pβ) propensities (original 1974 values)
+HELIX_PROP = {
+    'A':1.42,'R':0.98,'N':0.67,'D':1.01,'C':0.70,'Q':1.11,'E':1.51,'G':0.57,
+    'H':1.00,'I':1.08,'L':1.21,'K':1.16,'M':1.45,'F':1.13,'P':0.57,'S':0.77,
+    'T':0.83,'W':1.08,'Y':0.69,'V':1.06,
+}
+STRAND_PROP = {
+    'A':0.83,'R':0.93,'N':0.89,'D':0.54,'C':1.19,'Q':1.10,'E':0.37,'G':0.75,
+    'H':0.87,'I':1.60,'L':1.30,'K':0.74,'M':1.05,'F':1.38,'P':0.55,'S':0.75,
+    'T':1.19,'W':1.37,'Y':1.47,'V':1.70,
+}
+
+# SST canonical names → class index (0=helix, 1=strand, 2=loop)
+_SST_MAP = {
+    'alphahelix': 0, '3-10helix': 0,
+    'strand': 1, 'isolatedbeta-bridge': 1,
+    'turn': 2, 'bend': 2,
+}
+
+# Condition normalisation constants
+TEMP_REF_K  = 298.15
+TEMP_SCALE  = 15.0
+PH_REF      = 7.0
+PH_SCALE    = 1.5
+
 FEATURE_NAMES = (
     ['blosum62', 'delta_kd', 'delta_vol', 'delta_charge', 'burial_score',
      'is_pro_to', 'is_gly_to', 'is_cys_from', 'is_pro_from', 'is_gly_from',
-     'abs_delta_kd', 'abs_delta_vol', 'abs_delta_charge', 'position_frac']
+     'abs_delta_kd', 'abs_delta_vol', 'abs_delta_charge', 'position_frac',
+     'temp_norm', 'ph_norm']
     + [f'from_{aa}' for aa in AMINO_ACIDS]
     + [f'to_{aa}'   for aa in AMINO_ACIDS]
+    + ['sst_helix', 'sst_strand', 'sst_loop']  # Phase 4 — real from S1724 or Chou-Fasman proxy
+    + ['rsa']                                   # Phase 4 — real from S1724 or burial-score proxy
+    + ['esm_masked_marginal']                   # Phase 3 — only when ESM-2 was available at training
 )
 
+
+# ── Structural feature helpers ────────────────────────────────────────────────
 
 def burial_score(seq: str, pos: int, window: int = 4) -> float:
     """KD average of window neighbours — approximates hydrophobic burial."""
@@ -71,10 +108,71 @@ def burial_score(seq: str, pos: int, window: int = 4) -> float:
     return float(np.mean(vals)) if vals else 0.0
 
 
-def extract(from_aa: str, to_aa: str, position: int, sequence: str = '') -> np.ndarray:
+def encode_sst(sst_str: str | None) -> list[float]:
+    """
+    Map a canonical SST string (e.g. 'AlphaHelix') to one-hot [helix, strand, loop].
+    Unknown/None defaults to loop.
+    """
+    if sst_str is None:
+        return [0.0, 0.0, 1.0]
+    idx = _SST_MAP.get(sst_str.lower().replace(' ', ''), 2)
+    oh = [0.0, 0.0, 0.0]
+    oh[idx] = 1.0
+    return oh
+
+
+def predict_sst(seq: str, pos: int, window: int = 7) -> list[float]:
+    """
+    Chou-Fasman window-average secondary structure prediction.
+    Returns one-hot [helix, strand, loop].
+    ~70% 3-class accuracy — used as inference-time proxy when real SST unavailable.
+    """
+    start = max(0, pos - window // 2)
+    end   = min(len(seq), pos + window // 2 + 1)
+    window_seq = seq[start:end]
+    if not window_seq:
+        return [0.0, 0.0, 1.0]
+
+    avg_h = float(np.mean([HELIX_PROP.get(aa, 1.0)  for aa in window_seq]))
+    avg_s = float(np.mean([STRAND_PROP.get(aa, 1.0) for aa in window_seq]))
+
+    if avg_h >= avg_s and avg_h > 1.0:
+        return [1.0, 0.0, 0.0]
+    if avg_s > avg_h and avg_s > 1.0:
+        return [0.0, 1.0, 0.0]
+    return [0.0, 0.0, 1.0]
+
+
+def approx_rsa(burial: float) -> float:
+    """
+    Sequence-based RSA proxy: sigmoid of negated KD-burial score.
+    burial > 0 (hydrophobic context) → lower RSA (more buried).
+    Returns float in ~(0.15, 0.85).
+    """
+    return float(1.0 / (1.0 + np.exp(burial * 0.8)))
+
+
+# ── Main feature extractor ────────────────────────────────────────────────────
+
+def extract(from_aa: str, to_aa: str, position: int,
+            sequence: str = '', conditions: dict = None,
+            esm_score: float | None = None,
+            rsa: float | None = None,
+            sst: str | None = None) -> np.ndarray:
     """
     Returns a 1-D feature vector for one single-point mutation.
-    `sequence` is optional; if provided, a burial heuristic is included.
+
+    Phase 1-2 (always):
+      56 physicochemical features (BLOSUM62, KD, volume, charge, burial, flags, one-hot AA)
+    Phase 4 (always, real or proxied):
+      sst_helix / sst_strand / sst_loop  — from S1724 CSV or Chou-Fasman proxy at inference
+      rsa                                — from S1724 CSV or burial-score sigmoid proxy
+    Phase 3 (optional):
+      esm_masked_marginal  — only when model trained with ESM-2 (None → omit, keeps 60-dim)
+
+    conditions keys (pre-normalised by caller):
+      temp_norm  — (T_kelvin - 298.15) / 15.0
+      ph_norm    — (pH - 7.0) / 1.5
     """
     blosum  = BLOSUM62.get(from_aa, {}).get(to_aa, -4)
     d_kd    = KD.get(to_aa, 0.0)    - KD.get(from_aa, 0.0)
@@ -82,12 +180,19 @@ def extract(from_aa: str, to_aa: str, position: int, sequence: str = '') -> np.n
     d_chg   = CHARGE.get(to_aa, 0.0) - CHARGE.get(from_aa, 0.0)
 
     pos_in_seq = position - 1  # 0-based
-    burial = burial_score(sequence, pos_in_seq) if sequence else 0.0
+    burial   = burial_score(sequence, pos_in_seq) if sequence else 0.0
+    pos_frac = position / max(len(sequence), 1)   if sequence else 0.5
 
-    pos_frac = position / max(len(sequence), 1) if sequence else 0.5
+    cond      = conditions or {}
+    temp_norm = float(cond.get('temp_norm', 0.0))
+    ph_norm   = float(cond.get('ph_norm',   0.0))
 
     from_oh = [1.0 if aa == from_aa else 0.0 for aa in AMINO_ACIDS]
     to_oh   = [1.0 if aa == to_aa   else 0.0 for aa in AMINO_ACIDS]
+
+    # Phase 4 structural features
+    sst_vec = encode_sst(sst) if sst is not None else predict_sst(sequence, pos_in_seq)
+    rsa_val = float(rsa)       if rsa is not None else approx_rsa(burial)
 
     vec = [
         float(blosum),
@@ -104,14 +209,17 @@ def extract(from_aa: str, to_aa: str, position: int, sequence: str = '') -> np.n
         abs(d_vol),
         abs(d_chg),
         pos_frac,
-    ] + from_oh + to_oh
+        temp_norm,
+        ph_norm,
+    ] + from_oh + to_oh + sst_vec + [rsa_val]   # 60 dims
+
+    if esm_score is not None:
+        vec.append(float(esm_score))             # 61st dim
 
     return np.array(vec, dtype=np.float32)
 
 
-def feature_matrix(mutations: list[tuple], sequence: str = '') -> np.ndarray:
-    """
-    mutations: list of (from_aa, to_aa, position) tuples
-    Returns shape (n_mutations, n_features)
-    """
-    return np.vstack([extract(f, t, p, sequence) for f, t, p in mutations])
+def feature_matrix(mutations: list[tuple], sequence: str = '',
+                   conditions: dict = None) -> np.ndarray:
+    """mutations: list of (from_aa, to_aa, position) tuples"""
+    return np.vstack([extract(f, t, p, sequence, conditions) for f, t, p in mutations])

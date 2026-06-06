@@ -58,14 +58,18 @@ def model_info():
         meta = json.load(f)
     # Return summary (not all variant predictions)
     return {
-        'modelVersion':  meta.get('modelVersion'),
-        'algorithm':     meta.get('algorithm'),
-        'nVariants':     meta.get('nVariants'),
-        'nFeatures':     meta.get('nFeatures'),
-        'looR2':         meta.get('looR2'),
-        'looRMSE':       meta.get('looRMSE'),
-        'inSampleR2':    meta.get('inSampleR2'),
-        'pearsonR':      meta.get('pearsonR'),
+        'modelVersion':   meta.get('modelVersion'),
+        'algorithm':      meta.get('algorithm'),
+        'nVariants':      meta.get('nVariants'),
+        'nProteins':      meta.get('nProteins'),
+        'nFeatures':      meta.get('nFeatures'),
+        'randomCvR2':     meta.get('looR2'),
+        'randomCvRMSE':   meta.get('looRMSE'),
+        'proteinCvR2':    meta.get('proteinCvR2'),
+        'proteinCvRMSE':  meta.get('proteinCvRMSE'),
+        'proteinCvPCC':   meta.get('proteinCvPCC'),
+        'inSampleR2':     meta.get('inSampleR2'),
+        'pearsonR':       meta.get('pearsonR'),
         'stabilityRange': meta.get('stabilityRange'),
     }
 
