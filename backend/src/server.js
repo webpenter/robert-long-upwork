@@ -16,10 +16,12 @@ const uploadRoutes = require('./routes/uploads');
 const analyticsRoutes  = require('./routes/analytics');
 const dashboardRoutes  = require('./routes/dashboard');
 const mlRoutes         = require('./routes/ml');
+const exportRoutes     = require('./routes/exports');
 const { errorHandler } = require('./middleware/errorHandler');
+const { startQueue } = require('./services/jobQueue');
 
 // Connect to MongoDB
-connectDB();
+connectDB().then(() => startQueue()).catch(console.error);
 
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -57,6 +59,7 @@ app.use('/api/uploads', uploadRoutes);
 app.use('/api/analytics',  analyticsRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/ml',        mlRoutes);
+app.use('/api/exports',   exportRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', db: 'mongodb', timestamp: new Date().toISOString() });

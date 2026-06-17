@@ -2,6 +2,7 @@ const express = require('express');
 const { body, validationResult } = require('express-validator');
 const Prediction = require('../models/Prediction');
 const { authenticate } = require('../middleware/auth');
+const { generateChatResponse } = require('../services/claudeChat');
 const { runPrediction } = require('../services/predictionService');
 
 const router = express.Router();
@@ -48,7 +49,7 @@ router.post(
   '/',
   [
     body('fastaSequence').notEmpty().withMessage('FASTA sequence is required'),
-    body('conditions').isObject().withMessage('Conditions object is required'),
+    body('conditions').optional().isObject().withMessage('Conditions must be an object'),
   ],
   async (req, res, next) => {
     const errors = validationResult(req);
@@ -68,7 +69,8 @@ router.post(
         status: 'QUEUED',
       });
 
-      runPrediction(prediction._id, req.user.tier).catch(console.error);
+      // Fire-and-forget: CNN inference is <50ms, no need for a job queue
+      runPrediction(prediction._id).catch(console.error);
 
       res.status(201).json({ prediction });
     } catch (err) {
@@ -91,12 +93,10 @@ router.post('/:id/chat', async (req, res, next) => {
 
     prediction.chatMessages.push({ role: 'user', content: message });
 
-    // Placeholder — replace with Claude API call in Phase 4
-    prediction.chatMessages.push({
-      role: 'assistant',
-      content: 'AI assistant (Claude API) integration coming in Phase 4.',
-      citations: [],
-    });
+    const chatHistory = prediction.chatMessages.map(m => ({ role: m.role, content: m.content }));
+    const reply = await generateChatResponse(prediction.toJSON(), chatHistory);
+
+    prediction.chatMessages.push({ role: 'assistant', content: reply, citations: [] });
 
     await prediction.save();
     const msgs = prediction.chatMessages.slice(-2);

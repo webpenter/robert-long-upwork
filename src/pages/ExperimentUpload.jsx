@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Upload, CheckCircle2, AlertCircle, ChevronRight, FileSpreadsheet, Loader2 } from 'lucide-react';
+import { Upload, CheckCircle2, AlertCircle, ChevronRight, FileSpreadsheet, Loader2, X } from 'lucide-react';
 import api from '../services/apiClient';
 
 const ASSAY_TYPES = ['THERMAL', 'PH', 'SOLVENT', 'IONIC_STRENGTH', 'OTHER'];
@@ -28,6 +28,7 @@ export default function ExperimentUpload() {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [uploadDone, setUploadDone] = useState(false);
+  const [uploadWarnings, setUploadWarnings] = useState([]);
 
   useEffect(() => {
     api.get('/projects').then(({ projects }) => {
@@ -86,6 +87,7 @@ export default function ExperimentUpload() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Upload failed');
+      if (data.warnings?.length) setUploadWarnings(data.warnings);
       setUploadDone(true);
     } catch (err) {
       setUploadError(err.message || 'Upload failed');
@@ -219,18 +221,38 @@ export default function ExperimentUpload() {
           </div>
 
           {uploadDone ? (
-            <div className="text-center py-8 space-y-4">
-              <div className="w-14 h-14 bg-green-50 rounded-full flex items-center justify-center mx-auto">
-                <CheckCircle2 className="w-8 h-8 text-green-500" />
+            <div className="space-y-4">
+              <div className="text-center py-6 space-y-3">
+                <div className="w-14 h-14 bg-green-50 rounded-full flex items-center justify-center mx-auto">
+                  <CheckCircle2 className="w-8 h-8 text-green-500" />
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-900">File uploaded successfully</p>
+                  <p className="text-gray-500 text-sm mt-1">The data will be parsed and measurements will appear in the experiment.</p>
+                </div>
+                <button onClick={() => navigate(`/experiments/${createdExperiment._id}`)}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-medium text-sm transition-colors">
+                  View Experiment
+                </button>
               </div>
-              <div>
-                <p className="font-semibold text-gray-900">File uploaded successfully</p>
-                <p className="text-gray-500 text-sm mt-1">The data will be parsed and measurements will appear in the experiment.</p>
-              </div>
-              <button onClick={() => navigate(`/experiments/${createdExperiment._id}`)}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-medium text-sm transition-colors">
-                View Experiment
-              </button>
+              {uploadWarnings.length > 0 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-start gap-2">
+                      <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-medium text-amber-800 mb-1">Validation warnings</p>
+                        <ul className="space-y-1">
+                          {uploadWarnings.map((w, i) => <li key={i} className="text-sm text-amber-700">{w}</li>)}
+                        </ul>
+                      </div>
+                    </div>
+                    <button onClick={() => setUploadWarnings([])} className="text-amber-400 hover:text-amber-600 flex-shrink-0">
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <>
@@ -249,7 +271,7 @@ export default function ExperimentUpload() {
                 ) : (
                   <>
                     <p className="font-medium text-gray-700 text-sm">Click to select or drag & drop</p>
-                    <p className="text-gray-400 text-xs mt-1">Supports .xlsx, .xls, .csv — up to 50 MB</p>
+                    <p className="text-gray-400 text-xs mt-1">Supports .xlsx, .xls, .csv — reads first sheet automatically — up to 50 MB</p>
                   </>
                 )}
                 <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleFileChange} />

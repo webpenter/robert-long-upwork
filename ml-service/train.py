@@ -2,13 +2,17 @@
 Train the hsFAST stability prediction model.
 
 Usage:
-    python train.py                  # train on S1724 ThermoMutDB benchmark (default)
-    python train.py --from-csv       # same — reads client-data/benchmarks/S1724_...csv
-    python train.py --from-hsfast    # legacy: train on 50-variant hsFAST CSV data
+    python train.py                    # train on S1724 ThermoMutDB benchmark (default)
+    python train.py --from-csv         # same — reads client-data/benchmarks/S1724_...csv
+    python train.py --from-hsfast      # legacy: train on 50-variant hsFAST CSV data
+    python train.py --from-dms         # DMS v7 data from client-data/dms/
+    python train.py --augment-dms      # S1724 + DMS combined dataset
+    python train.py --use-cnn          # include ProtStabCNN in model comparison
 
 Outputs:
     ml-service/models/stability_model.joblib
     ml-service/models/rf_for_uncertainty.joblib
+    ml-service/models/cnn_model.joblib      (when CNN is trained)
     ml-service/models/training_meta.json
 """
 
@@ -27,7 +31,7 @@ from sklearn.model_selection import KFold, cross_val_score
 from sklearn.metrics import r2_score, mean_squared_error
 import joblib
 
-from features import extract, AMINO_ACIDS, encode_sst
+from features import extract, extract_window, AMINO_ACIDS, encode_sst
 
 ROOT       = os.path.join(os.path.dirname(__file__), '..')
 DATA_DIR   = os.path.join(os.path.dirname(__file__), 'data')
@@ -236,6 +240,95 @@ def load_hsfast() -> list[dict]:
     return records
 
 
+# ── DMS v7 loader ─────────────────────────────────────────────────────────────
+
+def load_dms(dms_dir: str = None) -> list[dict]:
+    """
+    Load Deep Mutational Scanning (DMS v7) data from client-data/dms/.
+
+    Expected CSV columns (any order):
+      Required : protein, mutation, sequence, ddg  (kcal/mol, positive=stabilising)
+      Optional : rsa, sst, temperature, ph
+
+    One or more CSV files in dms_dir are merged. Rows missing required fields
+    or with unparseable mutations are silently skipped.
+    """
+    if dms_dir is None:
+        dms_dir = os.path.join(ROOT, 'client-data', 'dms')
+
+    if not os.path.isdir(dms_dir):
+        raise FileNotFoundError(
+            f'DMS directory not found: {dms_dir}\n'
+            'Place DMS CSV files at client-data/dms/')
+
+    csv_files = [f for f in os.listdir(dms_dir) if f.endswith('.csv')]
+    if not csv_files:
+        raise FileNotFoundError(f'No CSV files found in {dms_dir}')
+
+    print(f'  Loading DMS data from {len(csv_files)} file(s) in {dms_dir}')
+    all_records = []
+
+    for fname in sorted(csv_files):
+        path = os.path.join(dms_dir, fname)
+        try:
+            df = pd.read_csv(path)
+        except Exception as exc:
+            print(f'    WARN: could not read {fname}: {exc}')
+            continue
+
+        df.columns = [c.strip().lower() for c in df.columns]
+        required = {'protein', 'mutation', 'sequence', 'ddg'}
+        if not required.issubset(set(df.columns)):
+            missing = required - set(df.columns)
+            print(f'    WARN: {fname} missing columns {missing}, skipping')
+            continue
+
+        df = df.dropna(subset=['protein', 'mutation', 'sequence', 'ddg'])
+        skipped = 0
+        for _, row in df.iterrows():
+            code = str(row['mutation']).strip()
+            m    = re.match(r'^([A-Z])(\d+)([A-Z])$', code)
+            if not m:
+                skipped += 1
+                continue
+            from_aa  = m.group(1)
+            pos      = int(m.group(2))
+            to_aa    = m.group(3)
+            seq      = str(row['sequence']).strip()
+            pos_0    = pos - 1
+            if pos_0 < 0 or pos_0 >= len(seq):
+                skipped += 1
+                continue
+
+            rsa_val = float(row['rsa']) if 'rsa' in df.columns and pd.notna(row.get('rsa')) else None
+            sst_val = str(row['sst']).strip() if 'sst' in df.columns and pd.notna(row.get('sst')) else None
+            temp_k  = float(row['temperature']) if 'temperature' in df.columns and pd.notna(row.get('temperature')) else 298.15
+            ph_val  = float(row['ph'])           if 'ph'          in df.columns and pd.notna(row.get('ph'))          else 7.0
+
+            all_records.append({
+                'mutation':   code,
+                'from_aa':    from_aa,
+                'to_aa':      to_aa,
+                'position':   pos,
+                'sequence':   seq,
+                'ddg':        float(row['ddg']),
+                'protein':    str(row['protein']).strip(),
+                'conditions': {
+                    'temp_norm': (temp_k  - 298.15) / 15.0,
+                    'ph_norm':   (ph_val  - 7.0)    / 1.5,
+                },
+                'rsa': rsa_val,
+                'sst': sst_val,
+                'source': 'dms',
+            })
+
+        accepted = len(all_records) - (len(all_records) - len(all_records) + skipped + len(df) - skipped)
+        print(f'    {fname}: {len(df) - skipped} accepted, {skipped} skipped')
+
+    print(f'  DMS total: {len(all_records)} variants from {len(csv_files)} file(s)')
+    return all_records
+
+
 # ── ESM-2 masked marginal precomputation ─────────────────────────────────────
 
 def add_esm_scores(records: list[dict]) -> bool:
@@ -287,9 +380,10 @@ def add_esm_scores(records: list[dict]) -> bool:
     return scored > 0
 
 
-# ── Build feature matrix ──────────────────────────────────────────────────────
+# ── Build feature matrices ────────────────────────────────────────────────────
 
 def build_dataset(records: list[dict]) -> tuple[np.ndarray, np.ndarray, list[str], np.ndarray]:
+    """Build physicochemical feature matrix (60/61-dim) for RF/GB/Ridge."""
     X_rows, y_rows, ids, groups = [], [], [], []
     for r in records:
         feat = extract(
@@ -307,6 +401,15 @@ def build_dataset(records: list[dict]) -> tuple[np.ndarray, np.ndarray, list[str
             np.array(y_rows, dtype=np.float64),
             ids,
             np.array(groups))
+
+
+def build_window_dataset(records: list[dict]) -> np.ndarray:
+    """Build 506-dim sequence-window feature matrix for ProtStabCNN."""
+    return np.array([
+        extract_window(r['from_aa'], r['to_aa'], r['position'],
+                       r.get('sequence', ''))
+        for r in records
+    ], dtype=np.float32)
 
 
 # ── Sequence fingerprinting for similarity warning ────────────────────────────
@@ -338,7 +441,7 @@ def build_fingerprints(records: list[dict]) -> list[list[float]]:
 
 # ── Model training ────────────────────────────────────────────────────────────
 
-def train(records: list[dict]) -> dict:
+def train(records: list[dict], use_cnn: bool = False) -> dict:
     fingerprints = build_fingerprints(records)
 
     print('\n  Phase 3: ESM-2 masked marginal scores')
@@ -371,14 +474,51 @@ def train(records: list[dict]) -> dict:
 
     # ── Random 5-fold CV (optimistic — mutations from same protein leak across folds)
     cv_random   = KFold(n_splits=5, shuffle=True, random_state=42)
-    # ── Protein-held-out CV (Phase 6 — honest: entire proteins held out)
+    # ── Protein-held-out CV (honest: entire proteins held out)
     cv_protein  = GroupKFold(n_splits=5)
+
+    base_models = [('RandomForest', rf), ('GradBoost', gb), ('Ridge', ridge)]
+
+    # ── ProtStabCNN (Phase D Step 10) ─────────────────────────────────────────
+    cnn_model_obj  = None
+    cnn_results_random  = None
+    cnn_results_protein = None
+
+    if use_cnn:
+        print('\n  Phase D: Building window features for ProtStabCNN...')
+        try:
+            from cnn_model import create_protostab_cnn
+            X_cnn = build_window_dataset(records)
+            print(f'  ProtStabCNN input shape: {X_cnn.shape}')
+
+            cnn = create_protostab_cnn()
+
+            with warnings.catch_warnings():
+                warnings.filterwarnings('ignore')
+                cv_preds_r = cross_val_predict(cnn, X_cnn, y, cv=cv_random)
+                cnn_results_random = {
+                    'cv_r2':   float(r2_score(y, cv_preds_r)),
+                    'cv_rmse': float(np.sqrt(mean_squared_error(y, cv_preds_r))),
+                    'cv_pcc':  float(pearsonr(y, cv_preds_r)[0]),
+                }
+                cv_preds_p = cross_val_predict(cnn, X_cnn, y, cv=cv_protein, groups=groups)
+                cnn_results_protein = {
+                    'cv_r2':   float(r2_score(y, cv_preds_p)),
+                    'cv_rmse': float(np.sqrt(mean_squared_error(y, cv_preds_p))),
+                    'cv_pcc':  float(pearsonr(y, cv_preds_p)[0]),
+                }
+
+            print(f'  ProtStabCNN  Random-CV  R²={cnn_results_random["cv_r2"]:.3f}  RMSE={cnn_results_random["cv_rmse"]:.3f}')
+            print(f'  ProtStabCNN  Protein-CV R²={cnn_results_protein["cv_r2"]:.3f}  RMSE={cnn_results_protein["cv_rmse"]:.3f}')
+            cnn_model_obj = (cnn, X_cnn)
+        except Exception as exc:
+            print(f'  ProtStabCNN skipped: {exc}')
 
     print(f'\n  Random 5-Fold CV  (optimistic — same-protein leakage):')
     results_random = {}
     with warnings.catch_warnings():
         warnings.filterwarnings('ignore', message='R.2 score is not well-defined')
-        for name, model in [('RandomForest', rf), ('GradBoost', gb), ('Ridge', ridge)]:
+        for name, model in base_models:
             cv_preds  = cross_val_predict(model, X, y, cv=cv_random)
             cv_rmse   = float(np.sqrt(mean_squared_error(y, cv_preds)))
             cv_r2     = float(r2_score(y, cv_preds))
@@ -386,11 +526,15 @@ def train(records: list[dict]) -> dict:
             results_random[name] = {'cv_r2': cv_r2, 'cv_rmse': cv_rmse, 'cv_pcc': float(cv_pcc)}
             print(f'    {name:15s}  R²={cv_r2:.3f}  RMSE={cv_rmse:.3f}  PCC={cv_pcc:.3f}')
 
+    if cnn_results_random:
+        results_random['ProtStabCNN'] = cnn_results_random
+        print(f'    {"ProtStabCNN":15s}  R²={cnn_results_random["cv_r2"]:.3f}  RMSE={cnn_results_random["cv_rmse"]:.3f}  (window features)')
+
     print(f'\n  Protein-Held-Out 5-Fold CV  (honest — new-protein generalisation):')
     results_protein = {}
     with warnings.catch_warnings():
         warnings.filterwarnings('ignore', message='R.2 score is not well-defined')
-        for name, model in [('RandomForest', rf), ('GradBoost', gb), ('Ridge', ridge)]:
+        for name, model in base_models:
             cv_preds  = cross_val_predict(model, X, y, cv=cv_protein, groups=groups)
             cv_rmse   = float(np.sqrt(mean_squared_error(y, cv_preds)))
             cv_r2     = float(r2_score(y, cv_preds))
@@ -398,33 +542,75 @@ def train(records: list[dict]) -> dict:
             results_protein[name] = {'cv_r2': cv_r2, 'cv_rmse': cv_rmse, 'cv_pcc': float(cv_pcc)}
             print(f'    {name:15s}  R²={cv_r2:.3f}  RMSE={cv_rmse:.3f}  PCC={cv_pcc:.3f}')
 
+    if cnn_results_protein:
+        results_protein['ProtStabCNN'] = cnn_results_protein
+        print(f'    {"ProtStabCNN":15s}  R²={cnn_results_protein["cv_r2"]:.3f}  RMSE={cnn_results_protein["cv_rmse"]:.3f}  (window features)')
+
     # Choose best model by protein-held-out R² (honest metric)
-    best_name = max(results_protein,
-                    key=lambda k: results_protein[k]['cv_r2']
-                    if not math.isnan(results_protein[k]['cv_r2']) else -999)
-    best_model = {'RandomForest': rf, 'GradBoost': gb, 'Ridge': ridge}[best_name]
+    all_protein_r2 = {k: v['cv_r2'] for k, v in results_protein.items()
+                      if not math.isnan(v['cv_r2'])}
+    best_name = max(all_protein_r2, key=lambda k: all_protein_r2[k])
+
+    model_lookup = {'RandomForest': rf, 'GradBoost': gb, 'Ridge': ridge}
+    cnn_is_best  = (best_name == 'ProtStabCNN') and (cnn_model_obj is not None)
+
+    if cnn_is_best:
+        best_model = cnn_model_obj[0]
+        X_train    = cnn_model_obj[1]
+    else:
+        best_name  = best_name if best_name in model_lookup else 'GradBoost'
+        best_model = model_lookup[best_name]
+        X_train    = X
+
     print(f'\n  Best model (by protein-CV): {best_name}')
     print(f'    Random-CV  R²={results_random[best_name]["cv_r2"]:.3f}  RMSE={results_random[best_name]["cv_rmse"]:.3f}')
     print(f'    Protein-CV R²={results_protein[best_name]["cv_r2"]:.3f}  RMSE={results_protein[best_name]["cv_rmse"]:.3f}')
 
-    best_model.fit(X, y)
+    best_model.fit(X_train, y)
 
-    y_pred    = best_model.predict(X)
+    y_pred    = best_model.predict(X_train)
     in_r2     = float(r2_score(y, y_pred))
     in_pcc, _ = pearsonr(y, y_pred)
     print(f'  In-sample  R²={in_r2:.3f}  Pearson r={in_pcc:.3f}')
 
+    # Always fit RF (used for uncertainty even if not the best predictor)
     rf.fit(X, y)
 
     joblib.dump(best_model, os.path.join(MODELS_DIR, 'stability_model.joblib'))
     joblib.dump(rf,         os.path.join(MODELS_DIR, 'rf_for_uncertainty.joblib'))
 
-    # Per-variant report
+    # Save CNN separately if trained
+    if cnn_model_obj is not None:
+        cnn_obj, _ = cnn_model_obj
+        if not cnn_is_best:
+            cnn_obj.fit(cnn_model_obj[1], y)
+        joblib.dump(cnn_obj, os.path.join(MODELS_DIR, 'cnn_model.joblib'))
+        print('  CNN model saved -> models/cnn_model.joblib')
+
+    # ── Per-protein stats ─────────────────────────────────────────────────────
+    protein_buckets: dict[str, list[float]] = defaultdict(list)
+    for r, actual in zip(records, y):
+        protein_buckets[r.get('protein', 'unknown')].append(float(actual))
+
+    protein_stats = []
+    for prot in sorted(protein_buckets):
+        ddgs = protein_buckets[prot]
+        protein_stats.append({
+            'protein':    prot,
+            'nVariants':  len(ddgs),
+            'meanDdg':    round(float(np.mean(ddgs)), 3),
+            'stdDdg':     round(float(np.std(ddgs)), 3),
+            'minDdg':     round(float(np.min(ddgs)), 3),
+            'maxDdg':     round(float(np.max(ddgs)), 3),
+        })
+
+    # ── Per-variant report ────────────────────────────────────────────────────
     variant_preds = []
-    for r, feat_row, actual in zip(records, X, y):
+    for r, feat_row, actual in zip(records, X_train, y):
         pred = float(best_model.predict(feat_row.reshape(1, -1))[0])
         variant_preds.append({
             'mutation':        r.get('mutation', ''),
+            'protein':         r.get('protein', 'unknown'),
             'actual_ddg':      round(float(actual), 4),
             'predicted_ddg':   round(pred, 4),
             'error':           round(abs(pred - float(actual)), 4),
@@ -432,14 +618,20 @@ def train(records: list[dict]) -> dict:
 
     variant_preds.sort(key=lambda x: x['actual_ddg'], reverse=True)
 
-    model_version = 'v4.0-structural' if esm_used else 'v4.0-structural-noESM'
+    if esm_used:
+        model_version = 'v5.0-cnn-esm35M' if cnn_is_best else 'v5.0-esm35M'
+    else:
+        model_version = 'v5.0-cnn' if cnn_is_best else 'v5.0-structural'
+
+    sources = list({r.get('source', 's1724') for r in records})
+    n_dms   = sum(1 for r in records if r.get('source') == 'dms')
 
     meta = {
         'modelVersion':      model_version,
         'algorithm':         best_name,
         'nVariants':         n,
         'nProteins':         n_proteins,
-        'nFeatures':         int(X.shape[1]),
+        'nFeatures':         int(X_train.shape[1]),
         # Random CV (optimistic — same-protein leakage)
         'cvLabel':           'Random-5Fold',
         'cvResults':         results_random,
@@ -462,6 +654,11 @@ def train(records: list[dict]) -> dict:
         'trainingFingerprints':  fingerprints,
         'similarityThreshold':   0.70,
         'esmUsed':               esm_used,
+        'cnnUsed':               cnn_is_best,
+        'cnnTrained':            cnn_model_obj is not None,
+        'dataSources':           sources,
+        'nDmsVariants':          n_dms,
+        'proteinStats':          protein_stats,
         'variantPredictions':    variant_preds,
     }
 
@@ -471,6 +668,7 @@ def train(records: list[dict]) -> dict:
     print(f'\n  Model saved  -> models/stability_model.joblib')
     print(f'  Metadata    -> models/training_meta.json')
     print(f'  Fingerprints: {len(fingerprints)} unique training sequences')
+    print(f'  Per-protein stats: {len(protein_stats)} proteins')
 
     print('\n  Top 5 most stabilising mutations (actual ddG):')
     for vp in variant_preds[:5]:
@@ -491,6 +689,12 @@ if __name__ == '__main__':
                         help='Train on S1724 ThermoMutDB CSV (default)')
     parser.add_argument('--from-hsfast', action='store_true',
                         help='Legacy: train on 50-variant hsFAST CSV data')
+    parser.add_argument('--from-dms',   action='store_true',
+                        help='Train on DMS v7 data from client-data/dms/')
+    parser.add_argument('--augment-dms', action='store_true',
+                        help='Train on S1724 + DMS combined dataset')
+    parser.add_argument('--use-cnn',    action='store_true',
+                        help='Include ProtStabCNN (MLP) in model comparison')
     args = parser.parse_args()
 
     print('=== hsFAST Stability Model Training ===\n')
@@ -498,18 +702,28 @@ if __name__ == '__main__':
     if args.from_hsfast:
         print('Loading hsFAST 50-variant data...')
         records = load_hsfast()
+    elif args.from_dms:
+        print('Loading DMS v7 data...')
+        records = load_dms()
+    elif args.augment_dms:
+        print('Loading S1724 + DMS combined dataset...')
+        records = load_s1724() + load_dms()
+        print(f'  Combined: {len(records)} total variants')
     else:
         print('Loading S1724 ThermoMutDB benchmark...')
         records = load_s1724()
 
     print(f'\nLoaded {len(records)} training variants')
-    meta = train(records)
+    meta = train(records, use_cnn=args.use_cnn)
 
     print('\n=== Training Complete ===')
     print(f'  Version:       {meta["modelVersion"]}')
     print(f'  Algorithm:     {meta["algorithm"]}')
     print(f'  Features:      {meta["nFeatures"]}')
     print(f'  Proteins:      {meta["nProteins"]}')
+    print(f'  CNN trained:   {meta.get("cnnTrained", False)}')
+    print(f'  CNN is best:   {meta.get("cnnUsed", False)}')
+    print(f'  ESM used:      {meta.get("esmUsed", False)}')
     print(f'  Random-CV   R²={meta["looR2"]:.3f}  RMSE={meta["looRMSE"]:.3f} kcal/mol  (inflated — leakage)')
     print(f'  Protein-CV  R²={meta["proteinCvR2"]:.3f}  RMSE={meta["proteinCvRMSE"]:.3f} kcal/mol  (honest)')
     print(f'  In-sample   R²={meta["inSampleR2"]:.3f}')

@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, FlaskConical, Settings, LogOut, Upload, Dna, BarChart3, Brain } from 'lucide-react';
+import { LayoutDashboard, FlaskConical, Settings, LogOut, Upload, Dna, BarChart3, Brain, GitCompare, Microscope, Database } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function Sidebar() {
@@ -23,6 +23,8 @@ export default function Sidebar() {
       items: [
         { to: '/experiments', icon: BarChart3, label: 'Experiments' },
         { to: '/variants', icon: Dna, label: 'Variants' },
+        { to: '/compare', icon: GitCompare, label: 'Compare' },
+        { to: '/mutations', icon: Microscope, label: 'Mutations' },
         { to: '/experiments/new', icon: Upload, label: 'Upload Data' },
       ],
     },
@@ -30,6 +32,7 @@ export default function Sidebar() {
       label: 'ML Predictions',
       items: [
         { to: '/predict', icon: FlaskConical, label: 'New Prediction' },
+        { to: '/dataset-explorer', icon: Database, label: 'Dataset Explorer' },
         ...(isAdmin ? [{ to: '/model', icon: Brain, label: 'Model Manager' }] : []),
       ],
     },

@@ -8,7 +8,7 @@ import json, math, os
 import numpy as np
 import joblib
 
-from features import extract, AMINO_ACIDS, BLOSUM62, KD, VOL, CHARGE
+from features import extract, extract_window, AMINO_ACIDS, BLOSUM62, KD, VOL, CHARGE
 
 MODELS_DIR = os.path.join(os.path.dirname(__file__), 'models')
 
@@ -18,10 +18,11 @@ _meta            = None
 _fingerprints    = None   # list of L2-normalised 20-dim AA-composition vectors
 _sim_threshold   = 0.70
 _use_esm         = False  # True when the loaded model was trained with ESM-2 features
+_use_cnn         = False  # True when ProtStabCNN is the best model (uses window features)
 
 
 def _load():
-    global _model, _rf_uncert, _meta, _fingerprints, _sim_threshold, _use_esm
+    global _model, _rf_uncert, _meta, _fingerprints, _sim_threshold, _use_esm, _use_cnn
     model_path = os.path.join(MODELS_DIR, 'stability_model.joblib')
     rf_path    = os.path.join(MODELS_DIR, 'rf_for_uncertainty.joblib')
     meta_path  = os.path.join(MODELS_DIR, 'training_meta.json')
@@ -39,6 +40,7 @@ def _load():
     _fingerprints  = np.array(raw, dtype=np.float32) if raw else None
     _sim_threshold = _meta.get('similarityThreshold', 0.70)
     _use_esm       = _meta.get('esmUsed', False)
+    _use_cnn       = _meta.get('cnnUsed', False)
 
 
 _AA_ORDER = list('ACDEFGHIKLMNPQRSTVWY')
@@ -198,14 +200,20 @@ def predict_for_sequence(sequence: str, conditions: dict, tier: str) -> dict:
         for to_aa in AMINO_ACIDS:
             if to_aa == from_aa:
                 continue
-            esm_sc = None
-            if _use_esm and _esm_marginals is not None:
-                lp_to   = _esm_marginals.get((i, to_aa),   -20.0)
-                lp_from = _esm_marginals.get((i, from_aa),  -20.0)
-                esm_sc  = float(lp_to - lp_from)
-            elif _use_esm:
-                esm_sc = 0.0   # ESM trained but unavailable at inference
-            feat = extract(from_aa, to_aa, position, seq, norm_conds, esm_sc)
+
+            if _use_cnn:
+                # ProtStabCNN uses sequence-window features
+                feat = extract_window(from_aa, to_aa, position, seq)
+            else:
+                esm_sc = None
+                if _use_esm and _esm_marginals is not None:
+                    lp_to   = _esm_marginals.get((i, to_aa),   -20.0)
+                    lp_from = _esm_marginals.get((i, from_aa),  -20.0)
+                    esm_sc  = float(lp_to - lp_from)
+                elif _use_esm:
+                    esm_sc = 0.0
+                feat = extract(from_aa, to_aa, position, seq, norm_conds, esm_sc)
+
             pred = float(_model.predict(feat.reshape(1, -1))[0])
             scores_at_pos.append((to_aa, feat, pred))
 

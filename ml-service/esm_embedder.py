@@ -7,17 +7,22 @@ For each mutation (from_aa -> to_aa at position i):
 Positive score: ESM-2 prefers the mutant AA given the surrounding context.
 Correlates with experimental ddG (Meier et al. 2021, ESM-1v).
 
-Uses facebook/esm2_t6_8M_UR50D (8 M params, 320-dim, CPU-friendly).
+Phase D (Step 12): Upgraded to facebook/esm2_t12_35M_UR50D (35M params, 480-dim).
+  ~3× more parameters than the 8M model; better cross-protein generalisation.
+  Override via env var: ESM_MODEL_NAME=facebook/esm2_t6_8M_UR50D (for CPU-only)
+
 Falls back gracefully to score=0.0 if torch/transformers not installed.
 """
 
-import logging
+import logging, os
 from typing import Optional
 
 logger = logging.getLogger(__name__)
 
-ESM_MODEL_NAME = 'facebook/esm2_t6_8M_UR50D'
-BATCH_SIZE     = 32          # masked sequences per forward pass
+# Phase D Step 12: 35M model; configurable via env var for low-memory machines
+_DEFAULT_ESM_MODEL = 'facebook/esm2_t12_35M_UR50D'
+ESM_MODEL_NAME     = os.environ.get('ESM_MODEL_NAME', _DEFAULT_ESM_MODEL)
+BATCH_SIZE         = 16          # reduced from 32: 35M model uses more VRAM
 AMINO_ACIDS    = list('ACDEFGHIKLMNPQRSTVWY')
 
 _load_attempted = False

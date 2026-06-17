@@ -14,6 +14,7 @@ const uploadSchema = new mongoose.Schema({
   },
   parseErrors: [{ type: String }],
   parsedRows: { type: Number, default: 0 },
+  warnings: [{ type: String }],
 }, { timestamps: true });
 
 module.exports = mongoose.model('Upload', uploadSchema);

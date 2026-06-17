@@ -63,7 +63,14 @@ const predictionSchema = new mongoose.Schema({
   conditionOutOfRange: { type: Boolean, default: false },
   conditionNote: { type: String },
 
-  // Results
+  // CNN results (Phase F+)
+  dG:          { type: Number },        // predicted ΔG kcal/mol
+  stability:   { type: String },        // 'highly stable' | 'stable' | 'marginally stable' | 'unstable' | 'highly unstable'
+  seqLen:      { type: Number },        // sequence length sent to model (max 256)
+  truncated:   { type: Boolean, default: false },
+  latencyMs:   { type: Number },        // CNN inference latency
+
+  // Legacy mutation-candidate results (pre-Phase F)
   candidatesCount: { type: Number, default: 0 },
   candidates: [candidateSchema],
   hotspotMap: [hotspotSchema],

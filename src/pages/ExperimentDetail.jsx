@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Loader2, FlaskConical, BarChart3, TestTube, AlertCircle, Download, PlayCircle, CheckCircle2, Grid3X3, Upload, X } from 'lucide-react';
+import { ArrowLeft, Loader2, FlaskConical, BarChart3, TestTube, AlertCircle, Download, PlayCircle, CheckCircle2, Grid3X3, Upload, X, GitCompare, FileText } from 'lucide-react';
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
@@ -245,6 +245,7 @@ export default function ExperimentDetail() {
   const [uploadFile, setUploadFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
+  const [uploadWarnings, setUploadWarnings] = useState([]);
   const uploadRef = useRef();
 
   const handleInlineUpload = async () => {
@@ -263,6 +264,9 @@ export default function ExperimentDetail() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Upload failed');
+
+      // Capture validation warnings from the initial response
+      if (data.warnings?.length) setUploadWarnings(data.warnings);
 
       // Poll parse status until completed/failed (max 15 s)
       const uploadId = data.upload._id;
@@ -299,6 +303,7 @@ export default function ExperimentDetail() {
   };
 
   const fetchExperiment = useCallback(() => {
+    setExpandedSample(null);
     return api.get(`/experiments/${id}`)
       .then(({ experiment, measurements }) => {
         setExperiment(experiment);
@@ -346,6 +351,66 @@ export default function ExperimentDetail() {
       .filter(Boolean)
       .sort((a, b) => b.halfLife - a.halfLife)
       .slice(0, 20);
+  }, [measurements]);
+
+  // ── Replicate overlay state ───────────────────────────────────────────────────
+  const [expandedSample, setExpandedSample] = useState(null);
+
+  const replicateOverlay = useMemo(() => {
+    if (!expandedSample) return null;
+    const replicates = measurements.filter(m => {
+      const base = m.replicateGroup?.replace(/_R\d+$/, '') || m.sampleId;
+      return base === expandedSample;
+    });
+    if (replicates.length === 0) return null;
+
+    const allTimes = [...new Set(
+      replicates.flatMap(m => (m.rawReadings || []).map(r => r.timepoint)).filter(t => t != null)
+    )].sort((a, b) => a - b);
+    if (allTimes.length === 0) return null;
+
+    const chartData = allTimes.map(t => {
+      const point = { time: t };
+      for (const m of replicates) {
+        const r = m.rawReadings?.find(rr => rr.timepoint === t);
+        const label = m.replicateGroup || m.sampleId || m._id;
+        if (r) point[label] = r.fluorescence;
+      }
+      return point;
+    });
+
+    const series = replicates.map(m => {
+      const label = m.replicateGroup || m.sampleId || m._id;
+      const isGrubbs = m.qcFlags?.includes('grubbs_outlier');
+      const hl = m.derivedMetrics?.find(d => d.metricType === 'half_life');
+      return { label, isGrubbs, halfLife: hl?.value, r2: hl?.goodnessOfFit, excluded: m.excluded };
+    });
+
+    return { chartData, series };
+  }, [expandedSample, measurements]);
+
+  // ── Best metrics summary (shown when analytics has been run) ──────────────────
+  const bestMetrics = useMemo(() => {
+    const hls = measurements.flatMap(m => {
+      const hl = m.derivedMetrics?.find(d => d.metricType === 'half_life');
+      return hl ? [{ value: hl.value, r2: hl.goodnessOfFit, label: m.replicateGroup?.split('_R')[0] || m.sampleType }] : [];
+    });
+    const fcs = measurements.flatMap(m => {
+      const fc = m.derivedMetrics?.find(d => d.metricType === 'fold_change');
+      return fc ? [{ value: fc.value, label: m.replicateGroup?.split('_R')[0] || m.sampleType }] : [];
+    });
+    const tms = measurements.flatMap(m => {
+      const tm = m.derivedMetrics?.find(d => d.metricType === 'apparent_tm');
+      return tm ? [{ value: tm.value, r2: tm.goodnessOfFit, label: m.replicateGroup?.split('_R')[0] || m.sampleType }] : [];
+    });
+    if (hls.length === 0 && fcs.length === 0 && tms.length === 0) return null;
+
+    const bestHL = hls.length ? hls.reduce((a, b) => b.value > a.value ? b : a) : null;
+    const bestFC = fcs.length ? fcs.reduce((a, b) => b.value > a.value ? b : a) : null;
+    const bestTm = tms.length ? tms.reduce((a, b) => b.value > a.value ? b : a) : null;
+    const grubbsCount = measurements.filter(m => m.qcFlags?.includes('grubbs_outlier')).length;
+
+    return { bestHL, bestFC, bestTm, grubbsCount };
   }, [measurements]);
 
   // Fold-change endpoint data (if analytics has been run)
@@ -451,6 +516,19 @@ export default function ExperimentDetail() {
                 {analyticsRunning ? 'Running…' : 'Run Analytics'}
               </button>
             )}
+            {measurements.length > 0 && (
+              <button onClick={() => navigate(`/compare?experimentId=${id}`)}
+                className="flex items-center gap-2 px-3 py-1.5 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition-colors">
+                <GitCompare className="w-4 h-4" />
+                Compare
+              </button>
+            )}
+            <a href={`${import.meta.env.VITE_API_URL || 'http://localhost:4000/api'}/exports/experiment/${id}/pdf`}
+              target="_blank" rel="noreferrer"
+              className="flex items-center gap-2 px-3 py-1.5 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition-colors">
+              <FileText className="w-4 h-4" />
+              PDF Report
+            </a>
             <button onClick={exportCSV}
               className="flex items-center gap-2 px-3 py-1.5 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition-colors">
               <Download className="w-4 h-4" />
@@ -487,6 +565,55 @@ export default function ExperimentDetail() {
         </div>
       </div>
 
+      {/* ── Best metrics summary card ── */}
+      {bestMetrics && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold text-gray-900 text-sm">Best Results — This Experiment</h3>
+            {bestMetrics.grubbsCount > 0 && (
+              <span className="flex items-center gap-1.5 text-xs text-amber-600 bg-amber-50 px-2.5 py-1 rounded-full font-medium">
+                <AlertCircle className="w-3.5 h-3.5" />
+                {bestMetrics.grubbsCount} Grubbs outlier{bestMetrics.grubbsCount !== 1 ? 's' : ''} flagged
+              </span>
+            )}
+          </div>
+          <div className="grid grid-cols-3 gap-4">
+            {bestMetrics.bestHL && (
+              <div className="bg-blue-50 rounded-xl p-4">
+                <div className="text-xs text-blue-500 font-medium uppercase tracking-wider mb-1">Best Half-life</div>
+                <div className="text-2xl font-bold text-blue-700 font-mono">{bestMetrics.bestHL.value} <span className="text-sm font-normal">min</span></div>
+                <div className="text-xs text-blue-500 mt-1 truncate">{bestMetrics.bestHL.label}</div>
+                {bestMetrics.bestHL.r2 != null && (
+                  <div className={`text-xs mt-1 font-mono ${bestMetrics.bestHL.r2 >= 0.8 ? 'text-green-600' : 'text-amber-500'}`}>
+                    R² = {bestMetrics.bestHL.r2}
+                  </div>
+                )}
+              </div>
+            )}
+            {bestMetrics.bestFC && (
+              <div className="bg-green-50 rounded-xl p-4">
+                <div className="text-xs text-green-500 font-medium uppercase tracking-wider mb-1">Best Fold Change vs WT</div>
+                <div className="text-2xl font-bold text-green-700 font-mono">{bestMetrics.bestFC.value}<span className="text-sm font-normal">×</span></div>
+                <div className="text-xs text-green-500 mt-1 truncate">{bestMetrics.bestFC.label}</div>
+                <div className="text-xs text-green-400 mt-1">vs WT_HSFAST_FUSION</div>
+              </div>
+            )}
+            {bestMetrics.bestTm && (
+              <div className="bg-red-50 rounded-xl p-4">
+                <div className="text-xs text-red-500 font-medium uppercase tracking-wider mb-1">Best Apparent Tm</div>
+                <div className="text-2xl font-bold text-red-700 font-mono">{bestMetrics.bestTm.value} <span className="text-sm font-normal">°C</span></div>
+                <div className="text-xs text-red-500 mt-1 truncate">{bestMetrics.bestTm.label}</div>
+                {bestMetrics.bestTm.r2 != null && (
+                  <div className={`text-xs mt-1 font-mono ${bestMetrics.bestTm.r2 >= 0.85 ? 'text-green-600' : 'text-amber-500'}`}>
+                    R² = {bestMetrics.bestTm.r2}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Inline upload panel */}
       {showUpload && (
         <div className="bg-white rounded-xl shadow-sm border border-blue-100 p-5">
@@ -515,10 +642,10 @@ export default function ExperimentDetail() {
             ) : (
               <>
                 <p className="text-sm text-gray-600 font-medium">Click to select or drag & drop</p>
-                <p className="text-xs text-gray-400 mt-1">CSV files only — auto-detects plate reader, FACS, and kinetic formats</p>
+                <p className="text-xs text-gray-400 mt-1">.xlsx, .xls or .csv — auto-detects plate reader, FACS, and kinetic formats</p>
               </>
             )}
-            <input ref={uploadRef} type="file" accept=".csv,.txt" className="hidden"
+            <input ref={uploadRef} type="file" accept=".xlsx,.xls,.csv" className="hidden"
               onChange={e => { const f = e.target.files?.[0]; if (f) { setUploadFile(f); setUploadError(''); } }} />
           </div>
 
@@ -535,7 +662,7 @@ export default function ExperimentDetail() {
               <span className="text-amber-700">Standard curve:</span>
               <span>Standard_Curve, Concentration_ug_mL</span>
             </div>
-            <p className="text-gray-400 mt-1">Only .csv files are supported. XLSX must be exported to CSV first.</p>
+            <p className="text-gray-400 mt-1">Supports .xlsx, .xls, and .csv. Column headers must match the expected names above.</p>
           </div>
 
           {uploadError && (
@@ -549,6 +676,29 @@ export default function ExperimentDetail() {
             <button onClick={handleInlineUpload} disabled={!uploadFile || uploading}
               className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
               {uploading ? <><Loader2 className="w-4 h-4 animate-spin" />Parsing…</> : <><Upload className="w-4 h-4" />Upload File</>}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Upload validation warnings banner */}
+      {uploadWarnings.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-2.5">
+              <AlertCircle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-amber-800 mb-1">Upload warnings</p>
+                <ul className="space-y-1">
+                  {uploadWarnings.map((w, i) => (
+                    <li key={i} className="text-sm text-amber-700">{w}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+            <button onClick={() => setUploadWarnings([])}
+              className="text-amber-400 hover:text-amber-600 flex-shrink-0 transition-colors">
+              <X className="w-4 h-4" />
             </button>
           </div>
         </div>
@@ -598,7 +748,10 @@ export default function ExperimentDetail() {
 
                   {halfLifeRanking.length > 0 && (
                     <div className="mt-5">
-                      <h4 className="text-sm font-semibold text-gray-700 mb-3">Half-life ranking (top {halfLifeRanking.length})</h4>
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-sm font-semibold text-gray-700">Half-life ranking (top {halfLifeRanking.length})</h4>
+                        <span className="text-xs text-gray-400">Click a row to overlay replicates</span>
+                      </div>
                       <div className="overflow-x-auto">
                         <table className="w-full text-sm">
                           <thead>
@@ -610,17 +763,76 @@ export default function ExperimentDetail() {
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-gray-50">
-                            {halfLifeRanking.map((row, i) => (
-                              <tr key={i} className={i === 0 ? 'bg-green-50' : ''}>
-                                <td className="px-3 py-2 text-gray-500">{i + 1}</td>
-                                <td className="px-3 py-2 font-medium text-gray-900">{row.label}</td>
-                                <td className="px-3 py-2 font-mono font-bold text-blue-700">{row.halfLife}</td>
-                                <td className={`px-3 py-2 font-mono text-xs ${row.r2 >= 0.8 ? 'text-green-600' : 'text-amber-500'}`}>{row.r2}</td>
-                              </tr>
-                            ))}
+                            {halfLifeRanking.map((row, i) => {
+                              const isExpanded = expandedSample === row.label;
+                              return (
+                                <tr key={i}
+                                  onClick={() => setExpandedSample(isExpanded ? null : row.label)}
+                                  className={`cursor-pointer transition-colors ${isExpanded ? 'bg-blue-50' : i === 0 ? 'bg-green-50 hover:bg-green-100' : 'hover:bg-gray-50'}`}>
+                                  <td className="px-3 py-2 text-gray-500">{i + 1}</td>
+                                  <td className="px-3 py-2 font-medium text-gray-900">{row.label}</td>
+                                  <td className="px-3 py-2 font-mono font-bold text-blue-700">{row.halfLife}</td>
+                                  <td className={`px-3 py-2 font-mono text-xs ${row.r2 >= 0.8 ? 'text-green-600' : 'text-amber-500'}`}>{row.r2}</td>
+                                </tr>
+                              );
+                            })}
                           </tbody>
                         </table>
                       </div>
+
+                      {/* Replicate overlay panel */}
+                      {expandedSample && replicateOverlay && (
+                        <div className="mt-4 p-4 bg-blue-50 rounded-xl border border-blue-100">
+                          <div className="flex items-center justify-between mb-3">
+                            <h5 className="text-sm font-semibold text-gray-800">
+                              Replicates — <span className="text-blue-700">{expandedSample}</span>
+                            </h5>
+                            <div className="flex items-center gap-3">
+                              {replicateOverlay.series.some(s => s.isGrubbs) && (
+                                <span className="text-xs text-amber-600 bg-amber-100 px-2 py-0.5 rounded-full font-medium">
+                                  Orange = Grubbs outlier
+                                </span>
+                              )}
+                              <button onClick={() => setExpandedSample(null)}
+                                className="text-gray-400 hover:text-gray-600 text-xs">
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-3 gap-3 mb-3">
+                            {replicateOverlay.series.map(s => (
+                              <div key={s.label} className={`text-xs rounded-lg px-3 py-2 font-mono ${
+                                s.excluded ? 'bg-red-100 text-red-700' :
+                                s.isGrubbs ? 'bg-amber-100 text-amber-700' :
+                                'bg-white text-gray-700'
+                              }`}>
+                                <div className="font-semibold truncate">{s.label}</div>
+                                {s.halfLife != null && <div>t½ {s.halfLife} min</div>}
+                                {s.r2 != null && <div className={s.r2 >= 0.8 ? 'text-green-600' : 'text-amber-600'}>R²={s.r2}</div>}
+                                {s.isGrubbs && <div className="text-amber-600 font-medium">Grubbs outlier</div>}
+                              </div>
+                            ))}
+                          </div>
+
+                          <ResponsiveContainer width="100%" height={200}>
+                            <LineChart data={replicateOverlay.chartData} margin={{ top: 4, right: 12, left: 0, bottom: 4 }}>
+                              <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                              <XAxis dataKey="time" tick={{ fontSize: 10 }} label={{ value: 'Time (min)', position: 'insideBottom', offset: -2, fontSize: 10 }} />
+                              <YAxis tick={{ fontSize: 10 }} label={{ value: 'RFU', angle: -90, position: 'insideLeft', fontSize: 10 }} />
+                              <Tooltip formatter={(v, name) => [`${v} RFU`, name]} contentStyle={{ fontSize: 10 }} />
+                              <Legend wrapperStyle={{ fontSize: 10 }} />
+                              {replicateOverlay.series.map((s, i) => (
+                                <Line key={s.label} type="monotone" dataKey={s.label}
+                                  stroke={s.isGrubbs ? '#f97316' : s.excluded ? '#ef4444' : PALETTE[i % PALETTE.length]}
+                                  strokeWidth={s.isGrubbs ? 2.5 : 1.5}
+                                  strokeDasharray={s.excluded ? '4 2' : undefined}
+                                  dot={false} connectNulls={false} />
+                              ))}
+                            </LineChart>
+                          </ResponsiveContainer>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

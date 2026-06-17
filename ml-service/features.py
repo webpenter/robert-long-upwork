@@ -223,3 +223,45 @@ def feature_matrix(mutations: list[tuple], sequence: str = '',
                    conditions: dict = None) -> np.ndarray:
     """mutations: list of (from_aa, to_aa, position) tuples"""
     return np.vstack([extract(f, t, p, sequence, conditions) for f, t, p in mutations])
+
+
+# ── Sequence-window features for ProtStabCNN ─────────────────────────────────
+
+CNN_WINDOW   = 25    # residues on each side + centre = 25
+CNN_SCALARS  = 6     # blosum, d_kd, d_vol, d_chg, rsa, pos_frac
+CNN_FEAT_DIM = CNN_WINDOW * len(AMINO_ACIDS) + CNN_SCALARS  # 25×20 + 6 = 506
+
+
+def extract_window(from_aa: str, to_aa: str, position: int,
+                   sequence: str, W: int = CNN_WINDOW) -> np.ndarray:
+    """
+    506-dim feature vector for ProtStabCNN:
+      500 = W=25 residue window one-hot (WT sequence, zero-padded at termini)
+      6   = [blosum62, d_kd, d_vol, d_chg, rsa, pos_frac]
+    """
+    pos_0 = position - 1
+    half  = W // 2
+    L     = len(sequence)
+
+    # Extract window with zero-padding at boundaries
+    window_oh = []
+    for offset in range(-half, half + 1):
+        idx = pos_0 + offset
+        if 0 <= idx < L:
+            aa = sequence[idx]
+        else:
+            aa = None   # padding
+        oh = [1.0 if (aa is not None and aa == a) else 0.0 for a in AMINO_ACIDS]
+        window_oh.extend(oh)
+
+    # 5 physicochemical scalars
+    blosum   = float(BLOSUM62.get(from_aa, {}).get(to_aa, -4))
+    d_kd     = KD.get(to_aa, 0.0)    - KD.get(from_aa, 0.0)
+    d_vol    = VOL.get(to_aa, 110.0)  - VOL.get(from_aa, 110.0)
+    d_chg    = CHARGE.get(to_aa, 0.0) - CHARGE.get(from_aa, 0.0)
+    burial   = burial_score(sequence, pos_0) if sequence else 0.0
+    rsa      = approx_rsa(burial)
+    pos_frac = (position / max(L, 1)) if L else 0.5
+
+    return np.array(window_oh + [blosum, d_kd, d_vol, d_chg, rsa, pos_frac],
+                    dtype=np.float32)

@@ -4,7 +4,7 @@ const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const Upload = require('../models/Upload');
 const { authenticate } = require('../middleware/auth');
-const { parseUploadedFile } = require('../services/csvParser');
+const { parseUploadedFile, validateUploadedFile } = require('../services/csvParser');
 
 const router = express.Router();
 router.use(authenticate);
@@ -32,6 +32,9 @@ router.post('/', upload.single('file'), async (req, res, next) => {
   if (!req.body.experimentId) return res.status(400).json({ error: 'experimentId is required' });
 
   try {
+    // Validate synchronously (read-only, fast) so warnings reach the client immediately
+    const { warnings = [] } = validateUploadedFile(req.file.path);
+
     const record = await Upload.create({
       experiment: req.body.experimentId,
       uploadedBy: req.user._id,
@@ -40,9 +43,10 @@ router.post('/', upload.single('file'), async (req, res, next) => {
       fileSize: req.file.size,
       mimeType: req.file.mimetype,
       parseStatus: 'processing',
+      warnings,
     });
 
-    res.status(201).json({ upload: record });
+    res.status(201).json({ upload: record, warnings });
 
     // Parse in background — don't block the response
     parseUploadedFile(req.file.path, req.body.experimentId)

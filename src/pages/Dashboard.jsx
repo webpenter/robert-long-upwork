@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
+  LineChart, Line, CartesianGrid, Legend, ReferenceLine,
 } from 'recharts';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/apiClient';
@@ -156,16 +157,162 @@ const STATUS_STYLE = {
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
 
+const CAMPAIGN_METRICS = [
+  { key: 'meanHalfLife',   bestKey: 'bestHalfLife',   label: 'Half-life (mean)',  unit: 'min',  color: '#3b82f6', bestColor: '#93c5fd' },
+  { key: 'meanFoldChange', bestKey: 'bestFoldChange', label: 'Fold change (mean)', unit: '×',   color: '#10b981', bestColor: '#6ee7b7' },
+  { key: 'meanTm',         bestKey: 'bestTm',         label: 'Apparent Tm (mean)', unit: '°C',  color: '#ef4444', bestColor: '#fca5a5' },
+];
+
+function CampaignTrend({ projects }) {
+  const navigate = useNavigate();
+  const [projectId, setProjectId] = useState('');
+  const [metric,    setMetric]    = useState(0);
+  const [data,      setData]      = useState(null);
+  const [loading,   setLoading]   = useState(false);
+
+  useEffect(() => {
+    if (projects.length > 0 && !projectId) setProjectId(projects[0]._id);
+  }, [projects, projectId]);
+
+  useEffect(() => {
+    if (!projectId) return;
+    setLoading(true);
+    api.get(`/analytics/campaign/${projectId}`)
+      .then(res => setData(res))
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, [projectId]);
+
+  const m = CAMPAIGN_METRICS[metric];
+  const hasData = data?.experiments?.some(e => e[m.key] != null);
+
+  const chartData = (data?.experiments || []).map(e => ({
+    name:     e.name.length > 18 ? e.name.slice(0, 16) + '…' : e.name,
+    fullName: e.name,
+    date:     e.date ? new Date(e.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '',
+    [m.key]:     e[m.key],
+    [m.bestKey]: e[m.bestKey],
+    measurements: e.measurements,
+  }));
+
+  // Reference line: mean across all experiments that have data
+  const validVals = chartData.map(d => d[m.key]).filter(v => v != null);
+  const overallMean = validVals.length
+    ? parseFloat((validVals.reduce((a, b) => a + b, 0) / validVals.length).toFixed(3))
+    : null;
+
+  const CustomTooltip = ({ active, payload, label }) => {
+    if (!active || !payload?.length) return null;
+    const entry = chartData.find(d => d.name === label) || {};
+    return (
+      <div className="bg-white border border-gray-200 rounded-lg shadow-md p-3 text-xs space-y-1.5 min-w-[150px]">
+        <p className="font-semibold text-gray-900 truncate">{entry.fullName || label}</p>
+        {entry.date && <p className="text-gray-400">{entry.date}</p>}
+        {payload.map(p => (
+          <div key={p.dataKey} className="flex items-center justify-between gap-3">
+            <span className="text-gray-500">{p.name}</span>
+            <span className="font-mono font-semibold" style={{ color: p.color }}>
+              {p.value != null ? `${p.value} ${m.unit}` : '—'}
+            </span>
+          </div>
+        ))}
+        {entry.measurements > 0 && (
+          <p className="text-gray-400 border-t border-gray-100 pt-1.5">{entry.measurements} measurements</p>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+        <div className="flex items-center gap-2">
+          <TrendingUp className="w-4 h-4 text-gray-400" />
+          <h3 className="font-semibold text-gray-900 text-sm">Campaign Stability Trend</h3>
+          {data?.project && <span className="text-xs text-gray-400">— {data.project}</span>}
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Metric toggle */}
+          <div className="flex rounded-lg border border-gray-200 overflow-hidden text-xs">
+            {CAMPAIGN_METRICS.map((cm, i) => (
+              <button key={cm.key} onClick={() => setMetric(i)}
+                className={`px-3 py-1.5 font-medium transition-colors ${
+                  metric === i ? 'bg-blue-600 text-white' : 'text-gray-500 hover:bg-gray-50'
+                }`}>
+                {cm.label.split(' ')[0]}
+              </button>
+            ))}
+          </div>
+
+          {/* Project selector */}
+          {projects.length > 1 && (
+            <select value={projectId} onChange={e => setProjectId(e.target.value)}
+              className="text-xs border border-gray-200 rounded-lg px-2.5 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+              {projects.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
+            </select>
+          )}
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="h-52 flex items-center justify-center">
+          <div className="space-y-2 w-full px-4">
+            {[1, 2, 3].map(i => <div key={i} className="h-4 bg-gray-100 rounded animate-pulse" style={{ width: `${60 + i * 12}%` }} />)}
+          </div>
+        </div>
+      ) : !hasData ? (
+        <div className="h-52 flex flex-col items-center justify-center text-center gap-2">
+          <BarChart3 className="w-8 h-8 text-gray-200" />
+          <p className="text-gray-400 text-sm">No analytics data yet for this project</p>
+          <p className="text-gray-300 text-xs">Upload experiment data and click "Run Analytics" on each experiment</p>
+        </div>
+      ) : (
+        <ResponsiveContainer width="100%" height={220}>
+          <LineChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 24 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+            <XAxis dataKey="name" tick={{ fontSize: 10 }} angle={-30} textAnchor="end" interval={0} />
+            <YAxis tick={{ fontSize: 10 }} unit={` ${m.unit}`} width={52} />
+            <Tooltip content={<CustomTooltip />} />
+            <Legend wrapperStyle={{ fontSize: 10, paddingTop: 4 }} />
+            {overallMean != null && (
+              <ReferenceLine y={overallMean} stroke="#d1d5db" strokeDasharray="4 2"
+                label={{ value: `avg ${overallMean}`, position: 'insideTopRight', fontSize: 9, fill: '#9ca3af' }} />
+            )}
+            <Line type="monotone" dataKey={m.key}  name={m.label} stroke={m.color}
+              strokeWidth={2} dot={{ r: 3, fill: m.color }} activeDot={{ r: 5 }} connectNulls={false} />
+            <Line type="monotone" dataKey={m.bestKey} name={`Best ${m.label.split(' ')[0]}`}
+              stroke={m.bestColor} strokeWidth={1.5} strokeDasharray="4 3"
+              dot={{ r: 2 }} connectNulls={false} />
+          </LineChart>
+        </ResponsiveContainer>
+      )}
+
+      {data?.experiments?.length > 0 && (
+        <p className="text-xs text-gray-400 mt-1 text-right">
+          {data.experiments.length} experiment{data.experiments.length !== 1 ? 's' : ''} ·
+          solid = mean · dashed = best replicate
+        </p>
+      )}
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const { user } = useAuth();
   const navigate  = useNavigate();
   const [stats,   setStats]   = useState(null);
   const [loading, setLoading] = useState(true);
+  const [projects, setProjects] = useState([]);
 
   const load = useCallback(async () => {
     try {
-      const data = await api.get('/dashboard/stats');
+      const [data, projData] = await Promise.all([
+        api.get('/dashboard/stats'),
+        api.get('/projects'),
+      ]);
       setStats(data);
+      setProjects(projData.projects || []);
     } catch (err) {
       console.error('Dashboard stats error:', err);
     } finally {
@@ -314,7 +461,12 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* ── Row 3: Recent experiments + recent predictions ── */}
+      {/* ── Row 3: Campaign trend ── */}
+      {!loading && projects.length > 0 && (
+        <CampaignTrend projects={projects} />
+      )}
+
+      {/* ── Row 4: Recent experiments + recent predictions ── */}
       <div className="grid grid-cols-5 gap-5">
 
         {/* Recent experiments */}

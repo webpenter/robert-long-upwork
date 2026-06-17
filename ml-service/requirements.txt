@@ -8,6 +8,9 @@ xgboost>=2.0.0
 joblib>=1.3.0
 requests>=2.31.0
 python-dotenv>=1.0.0
-# Phase 3 — ESM-2 masked marginal scoring (optional; graceful fallback if absent)
-# Install CPU-only torch first: pip install torch --index-url https://download.pytorch.org/whl/cpu
+# ProtStabCNN — PyTorch CPU build (GPU optional)
+# CPU install: pip install torch --index-url https://download.pytorch.org/whl/cpu
+torch>=2.0.0
+# ESM2-35M + LoRA model (esm2_lora checkpoints)
 transformers>=4.40.0
+peft>=0.10.0
