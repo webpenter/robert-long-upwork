@@ -1,0 +1,10 @@
+# Netlify config for the React/Vite frontend (lives at repo root).
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# SPA fallback so client-side routes (React Router) don't 404 on refresh.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
