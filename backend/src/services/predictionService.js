@@ -1,45 +1,13 @@
 'use strict';
-const http       = require('http');
 const Prediction = require('../models/Prediction');
-
-const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'http://localhost:8000';
+const { mlFetch } = require('./mlClient');
 
 // ── Call the Python ML service ───────────────────────────────────────────────
+// Delegates to the shared HTTPS-aware client so hosted (https://…) and local
+// (http://host:port) ML services both work.
 
 function postToMLService(path, body, timeoutMs = 30000) {
-  return new Promise((resolve, reject) => {
-    const data    = JSON.stringify(body);
-    const options = {
-      hostname: ML_SERVICE_URL.replace(/^https?:\/\//, '').split(':')[0],
-      port:     parseInt(ML_SERVICE_URL.split(':')[2] || '8000', 10),
-      path,
-      method:   'POST',
-      headers:  { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(data) },
-      timeout:  timeoutMs,
-    };
-
-    const req = http.request(options, (res) => {
-      let raw = '';
-      res.on('data', chunk => { raw += chunk; });
-      res.on('end', () => {
-        try {
-          const parsed = JSON.parse(raw);
-          if (res.statusCode >= 400) {
-            reject(new Error(parsed.detail || `ML service error ${res.statusCode}`));
-          } else {
-            resolve(parsed);
-          }
-        } catch {
-          reject(new Error(`ML service returned non-JSON: ${raw.slice(0, 200)}`));
-        }
-      });
-    });
-
-    req.on('error', reject);
-    req.on('timeout', () => { req.destroy(); reject(new Error('ML service request timed out')); });
-    req.write(data);
-    req.end();
-  });
+  return mlFetch(path, { method: 'POST', body, timeoutMs });
 }
 
 // ── Fallback ΔG estimate (when ML service is offline) ────────────────────────

@@ -1,51 +1,16 @@
 'use strict';
 const express  = require('express');
-const http     = require('http');
+const { mlFetch } = require('../services/mlClient');
 const { authenticate, requireRole } = require('../middleware/auth');
 
 const router = express.Router();
 router.use(authenticate);
 
 // ── Generic ML-service HTTP client ───────────────────────────────────────────
+// Thin wrapper over the shared HTTPS-aware client (handles hosted https URLs).
 
 function mlRequest(path, method = 'GET', body = null, timeoutMs = 6000) {
-  return new Promise((resolve, reject) => {
-    const base     = process.env.ML_SERVICE_URL || 'http://localhost:8000';
-    const hostname = base.replace(/^https?:\/\//, '').split(':')[0];
-    const port     = parseInt(base.split(':')[2] || '8000', 10);
-    const payload  = body ? JSON.stringify(body) : null;
-
-    const options = {
-      hostname, port, path, method,
-      timeout: timeoutMs,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(payload ? { 'Content-Length': Buffer.byteLength(payload) } : {}),
-      },
-    };
-
-    const req = http.request(options, (res) => {
-      let raw = '';
-      res.on('data', c => { raw += c; });
-      res.on('end', () => {
-        try {
-          const data = JSON.parse(raw);
-          if (res.statusCode >= 400) {
-            reject(new Error(data.detail || `ML service returned ${res.statusCode}`));
-          } else {
-            resolve(data);
-          }
-        } catch {
-          reject(new Error('ML service returned invalid JSON'));
-        }
-      });
-    });
-
-    req.on('error',   (err) => reject(new Error(err.message)));
-    req.on('timeout', () => { req.destroy(); reject(new Error('ML service request timed out')); });
-    if (payload) req.write(payload);
-    req.end();
-  });
+  return mlFetch(path, { method, body, timeoutMs });
 }
 
 // ── GET /api/ml/info ──────────────────────────────────────────────────────────

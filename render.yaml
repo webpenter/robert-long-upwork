@@ -1,0 +1,29 @@
+# Render Blueprint for the Enzyme ML backend (Express + MongoDB).
+# Deploy: Render Dashboard → New → Blueprint → pick this repo.
+# Set the `sync: false` vars in the dashboard after the service is created.
+services:
+  - type: web
+    name: enzyme-ml-backend
+    runtime: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # MongoDB Atlas connection string (mongodb+srv://...)
+      - key: MONGODB_URI
+        sync: false
+      # Auto-generated strong secrets for JWT signing
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      # Public URL of the Hugging Face Space, e.g. https://<user>-hsfast-ml.hf.space
+      - key: ML_SERVICE_URL
+        sync: false
+      # Public URL of the deployed frontend (Vercel), e.g. https://enzyme-ml.vercel.app
+      - key: FRONTEND_URL
+        sync: false

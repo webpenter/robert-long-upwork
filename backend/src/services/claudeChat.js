@@ -68,6 +68,12 @@ ${highPotentialHotspots || '  None above threshold'}
  * The last element must be the new user message.
  */
 async function generateChatResponse(prediction, chatHistory) {
+  // Gracefully disabled when no API key is configured (e.g. demo deployments).
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return 'The AI chat assistant is disabled in this demo environment. ' +
+           'All other prediction features remain fully available.';
+  }
+
   const client = getClient();
 
   const messages = chatHistory.map(msg => ({

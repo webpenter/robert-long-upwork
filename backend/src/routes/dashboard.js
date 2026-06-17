@@ -1,6 +1,6 @@
 'use strict';
 const express  = require('express');
-const http     = require('http');
+const { mlFetch } = require('../services/mlClient');
 const Project  = require('../models/Project');
 const Experiment = require('../models/Experiment');
 const Variant  = require('../models/Variant');
@@ -14,25 +14,7 @@ router.use(authenticate);
 // ── Lightweight proxy to ML service (3 s timeout, never throws) ─────────────
 
 function fetchML(path) {
-  return new Promise((resolve) => {
-    const base     = process.env.ML_SERVICE_URL || 'http://localhost:8000';
-    const hostname = base.replace(/^https?:\/\//, '').split(':')[0];
-    const port     = parseInt(base.split(':')[2] || '8000', 10);
-
-    const req = http.request(
-      { hostname, port, path, method: 'GET', timeout: 3000 },
-      (res) => {
-        let raw = '';
-        res.on('data', c => { raw += c; });
-        res.on('end', () => {
-          try { resolve(JSON.parse(raw)); } catch { resolve(null); }
-        });
-      }
-    );
-    req.on('error',   () => resolve(null));
-    req.on('timeout', () => { req.destroy(); resolve(null); });
-    req.end();
-  });
+  return mlFetch(path, { timeoutMs: 3000 }).catch(() => null);
 }
 
 // ── GET /api/dashboard/stats ─────────────────────────────────────────────────
