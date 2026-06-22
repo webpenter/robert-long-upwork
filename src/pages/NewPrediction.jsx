@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Upload, CheckCircle2, AlertCircle, Loader2, Dna, Zap } from 'lucide-react';
-import { parseFASTA, validateSequence, extractFeatures } from '../services/mlService';
+import { parseFASTA, parseMultiFASTA, validateSequence, extractFeatures } from '../services/mlService';
 import { useApp } from '../context/AppContext';
 
 const SAMPLE_FASTA = `>sp|P00761|TRYP_PIG Trypsin OS=Sus scrofa OX=9823
@@ -17,7 +17,7 @@ export default function NewPrediction() {
   const [progress, setProgress]     = useState(0);
 
   const fastaRef = useRef();
-  const { addPrediction, pollPrediction } = useApp();
+  const { addPrediction, addPredictionsBatch, pollPrediction } = useApp();
   const navigate = useNavigate();
 
   const handleFastaChange = (value) => {
@@ -25,17 +25,35 @@ export default function NewPrediction() {
     setFastaError('');
     setFastaInfo(null);
     if (!value.trim()) return;
-    const { sequence } = parseFASTA(value);
-    const v = validateSequence(sequence);
-    if (!v.valid) { setFastaError(v.error); return; }
-    const features = extractFeatures(sequence);
-    setFastaInfo({
-      length:   features.length,
-      mw:       features.estimatedMW,
-      charged:  features.chargedFraction,
-      hydro:    features.avgHydrophobicity,
-      truncWarning: features.length > 256,
-    });
+
+    const records = parseMultiFASTA(value);
+    if (!records.length) return;
+
+    const invalid = records
+      .map((r, i) => ({ name: r.header || `Sequence ${i + 1}`, v: validateSequence(r.sequence) }))
+      .filter(x => !x.v.valid);
+    if (invalid.length) {
+      setFastaError(
+        records.length === 1
+          ? invalid[0].v.error
+          : `${invalid.length} of ${records.length} sequences invalid — e.g. "${invalid[0].name}": ${invalid[0].v.error}`
+      );
+      return;
+    }
+
+    if (records.length === 1) {
+      const features = extractFeatures(records[0].sequence);
+      setFastaInfo({
+        multi:    false,
+        length:   features.length,
+        mw:       features.estimatedMW,
+        charged:  features.chargedFraction,
+        hydro:    features.avgHydrophobicity,
+        truncWarning: features.length > 256,
+      });
+    } else {
+      setFastaInfo({ multi: true, count: records.length });
+    }
   };
 
   const handleFile = (e) => {
@@ -48,25 +66,44 @@ export default function NewPrediction() {
 
   const handleRun = async () => {
     if (!fasta.trim()) { setFastaError('Please enter or upload a FASTA sequence'); return; }
-    const { sequence } = parseFASTA(fasta);
-    const v = validateSequence(sequence);
-    if (!v.valid) { setFastaError(v.error); return; }
+
+    const records = parseMultiFASTA(fasta);
+    if (!records.length) { setFastaError('No sequence detected'); return; }
+    const invalid = records
+      .map((r, i) => ({ name: r.header || `Sequence ${i + 1}`, v: validateSequence(r.sequence) }))
+      .filter(x => !x.v.valid);
+    if (invalid.length) {
+      setFastaError(
+        records.length === 1
+          ? invalid[0].v.error
+          : `${invalid.length} of ${records.length} sequences invalid — e.g. "${invalid[0].name}": ${invalid[0].v.error}`
+      );
+      return;
+    }
 
     setRunning(true);
     setProgress(0);
     const interval = setInterval(() => setProgress(p => Math.min(p + 8, 85)), 200);
 
     try {
-      const prediction = await addPrediction({
-        fastaSequence: fasta,
-        conditions:    {},
-      });
-      await pollPrediction(prediction._id, (updated) => {
-        if (updated.status === 'RUNNING') setProgress(p => Math.min(p + 5, 92));
-      });
-      clearInterval(interval);
-      setProgress(100);
-      setTimeout(() => navigate(`/results/${prediction._id}`), 500);
+      if (records.length === 1) {
+        const prediction = await addPrediction({ fastaSequence: fasta, conditions: {} });
+        await pollPrediction(prediction._id, (updated) => {
+          if (updated.status === 'RUNNING') setProgress(p => Math.min(p + 5, 92));
+        });
+        clearInterval(interval);
+        setProgress(100);
+        setTimeout(() => navigate(`/results/${prediction._id}`), 500);
+      } else {
+        const created = await addPredictionsBatch({
+          sequences:  records.map(r => ({ header: r.header, sequence: r.sequence })),
+          conditions: {},
+        });
+        clearInterval(interval);
+        setProgress(100);
+        const ids = created.map(p => p._id).join(',');
+        setTimeout(() => navigate(`/results-batch?ids=${ids}`), 500);
+      }
     } catch (err) {
       clearInterval(interval);
       setFastaError(err.message || 'Prediction failed. Is the backend running?');
@@ -150,8 +187,8 @@ export default function NewPrediction() {
             <Dna className="w-5 h-5 text-blue-600" />
           </div>
           <div>
-            <h2 className="font-semibold text-gray-900">Enter Protein Sequence</h2>
-            <p className="text-gray-500 text-sm">Paste a FASTA sequence or upload a .fasta file</p>
+            <h2 className="font-semibold text-gray-900">Enter Protein Sequence(s)</h2>
+            <p className="text-gray-500 text-sm">Paste one or more FASTA sequences (each starting with &gt;) or upload a .fasta file</p>
           </div>
         </div>
 
@@ -172,7 +209,14 @@ export default function NewPrediction() {
           </div>
         )}
 
-        {fastaInfo && !fastaError && (
+        {fastaInfo && !fastaError && fastaInfo.multi && (
+          <div className="p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2 text-green-700 text-sm font-medium">
+            <CheckCircle2 className="w-4 h-4" />
+            {fastaInfo.count} valid sequences detected — each will be predicted separately.
+          </div>
+        )}
+
+        {fastaInfo && !fastaError && !fastaInfo.multi && (
           <div className="p-3 bg-green-50 border border-green-200 rounded-lg space-y-2">
             <div className="flex items-center gap-2 text-green-700 text-sm font-medium">
               <CheckCircle2 className="w-4 h-4" />

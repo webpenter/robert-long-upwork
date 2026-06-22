@@ -58,8 +58,9 @@ def predict_batch(seqs: list[str], model, device: str = "cpu") -> list[float]:
 
 
 def stability_label(dg: float) -> str:
-    if dg >  3.0: return "highly stable"
-    if dg >  0.5: return "stable"
-    if dg > -0.5: return "marginally stable"
-    if dg > -3.0: return "unstable"
+    # Client convention: NEGATIVE ΔG = more stable (dg here is already negated at the API boundary).
+    if dg < -3.0: return "highly stable"
+    if dg < -0.5: return "stable"
+    if dg <  0.5: return "marginally stable"
+    if dg <  3.0: return "unstable"
     return "highly unstable"

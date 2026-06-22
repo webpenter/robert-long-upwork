@@ -125,55 +125,11 @@ async function main() {
   const resultStd     = await parseUploadedFile(CSV_FILES.standardCurves, expStd._id);
   console.log(`  Standard curves CSV: ${resultStd.count} measurements`);
 
-  // ── 6. Create Variant documents from the lysate CSV ───────────────────────
-  // (All 3 assay files cover the same V001–V050 variants — use lysate as master list)
-  console.log('\nCreating Variant documents...');
-
-  const lysateMeasurements = await Measurement.find({
-    experiment:  expLysate._id,
-    sampleType:  'VARIANT',
-  }).select('sampleId variantDescription').lean();
-
-  // Deduplicate by sampleId
-  const seen = new Set();
-  const variantDocs = [];
-  for (const m of lysateMeasurements) {
-    if (!m.sampleId || seen.has(m.sampleId)) continue;
-    seen.add(m.sampleId);
-    const mut = parseMutation(m.variantDescription || '');
-    variantDocs.push({
-      project:   project._id,
-      name:      m.sampleId,
-      mutations: mut ? [mut] : [],
-      familyAnnotation: 'hsFAST-screened library',
-    });
-  }
-
-  const savedVariants = await Variant.insertMany(variantDocs);
-  console.log(`  Created ${savedVariants.length} variant documents`);
-
-  // ── 7. Link Measurements to Variants across all three assay experiments ────
-  const variantBySampleId = {};
-  for (const v of savedVariants) variantBySampleId[v.name] = v._id;
-
-  for (const expId of [expKinetic._id, expLysate._id, expFACS._id]) {
-    const variantMeasurements = await Measurement.find({
-      experiment: expId,
-      sampleType: 'VARIANT',
-    }).select('_id sampleId').lean();
-
-    const bulkOps = variantMeasurements
-      .filter(m => variantBySampleId[m.sampleId])
-      .map(m => ({
-        updateOne: {
-          filter: { _id: m._id },
-          update: { $set: { variant: variantBySampleId[m.sampleId] } },
-        },
-      }));
-
-    if (bulkOps.length) await Measurement.bulkWrite(bulkOps);
-  }
-  console.log('  Linked measurements to variants');
+  // ── 6. Variants ────────────────────────────────────────────────────────────
+  // parseUploadedFile() now creates Variant documents and links measurements
+  // automatically (idempotent upsert by project+name), so we just fetch them here.
+  const savedVariants = await Variant.find({ project: project._id });
+  console.log(`  ${savedVariants.length} variant documents (created during parse)`);
 
   // ── 8. Run analytics ───────────────────────────────────────────────────────
   console.log('\nRunning analytics...');

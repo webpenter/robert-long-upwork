@@ -12,30 +12,26 @@ import { useApp } from '../context/AppContext';
 import api from '../services/apiClient';
 
 // ── Stability scale constants ─────────────────────────────────────────────────
-const DG_MIN  = -10;
-const DG_MAX  =  10;
-const ZONES   = [
-  { lo: -10,  hi: -3.0, label: 'Highly Unstable', color: '#dc2626', bg: '#fef2f2', text: '#991b1b' },
-  { lo:  -3.0, hi: -0.5, label: 'Unstable',        color: '#ea580c', bg: '#fff7ed', text: '#9a3412' },
-  { lo:  -0.5, hi:  0.5, label: 'Marginally Stable', color: '#ca8a04', bg: '#fefce8', text: '#854d0e' },
-  { lo:   0.5, hi:  3.0, label: 'Stable',           color: '#16a34a', bg: '#f0fdf4', text: '#166534' },
-  { lo:   3.0, hi: 10,   label: 'Highly Stable',    color: '#15803d', bg: '#dcfce7', text: '#14532d' },
-];
+// Client convention: NEGATIVE ΔG = more stable. No qualitative text labels — number only.
+const DG_MIN = -10;
+const DG_MAX =  10;
 
-function getZone(dg) {
-  return ZONES.find(z => dg >= z.lo && dg < z.hi) || ZONES[0];
+// Colour purely by sign for at-a-glance reading (no text label).
+function dgColor(dg) {
+  if (dg <= -0.5) return '#16a34a';   // stable  → green
+  if (dg >=  0.5) return '#dc2626';   // unstable → red
+  return '#ca8a04';                   // near-neutral → amber
 }
 
 // ── ΔG Gauge ─────────────────────────────────────────────────────────────────
 function DgGauge({ dg }) {
   const clampedPct = Math.max(0, Math.min(100, ((dg - DG_MIN) / (DG_MAX - DG_MIN)) * 100));
-  const zone = getZone(dg);
 
   return (
-    <div className="space-y-3">
-      {/* gradient bar */}
+    <div className="space-y-2">
+      {/* gradient bar: left (negative) = stable/green, right (positive) = unstable/red */}
       <div className="relative h-5 rounded-full overflow-hidden"
-        style={{ background: 'linear-gradient(to right, #dc2626 0%, #ea580c 20%, #ca8a04 40%, #16a34a 60%, #15803d 85%, #14532d 100%)' }}>
+        style={{ background: 'linear-gradient(to right, #15803d 0%, #16a34a 35%, #ca8a04 50%, #ea580c 65%, #dc2626 100%)' }}>
         {/* position marker */}
         <div
           className="absolute top-0 bottom-0 w-1 bg-white shadow-md rounded-full"
@@ -49,64 +45,9 @@ function DgGauge({ dg }) {
           <span key={l}>{l}</span>
         ))}
       </div>
-
-      {/* zone labels */}
-      <div className="flex gap-1 flex-wrap">
-        {ZONES.map(z => (
-          <span key={z.label}
-            className="px-2 py-0.5 rounded-full text-xs font-medium"
-            style={{
-              background: z.label === zone.label ? z.color : z.bg,
-              color:      z.label === zone.label ? '#fff' : z.text,
-              fontWeight: z.label === zone.label ? 700 : 400,
-            }}>
-            {z.label}
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ── Distribution bar for context ──────────────────────────────────────────────
-function DgDistributionBar({ dg }) {
-  const bins = [
-    { range: '< −6',       count: 8,  lo: -19, hi: -6 },
-    { range: '−6 to −3',   count: 18, lo: -6,  hi: -3 },
-    { range: '−3 to −0.5', count: 22, lo: -3,  hi: -0.5 },
-    { range: '−0.5 to 0.5',count: 12, lo: -0.5, hi: 0.5 },
-    { range: '0.5 to 3',   count: 25, lo: 0.5,  hi: 3 },
-    { range: '3 to 6',     count: 11, lo: 3,    hi: 6 },
-    { range: '> 6',        count: 4,  lo: 6,    hi: 19 },
-  ];
-
-  const inBin = (b) => dg >= b.lo && dg < b.hi;
-
-  return (
-    <div className="space-y-2">
-      <p className="text-xs text-gray-500 font-medium">
-        DMSv4 training distribution (455k sequences) — your prediction marked
-      </p>
-      <div className="flex items-end gap-1 h-12">
-        {bins.map(b => (
-          <div key={b.range} className="flex-1 flex flex-col items-center gap-0.5">
-            <div
-              className="w-full rounded-sm transition-all"
-              style={{
-                height:     `${Math.round(b.count / 25 * 48)}px`,
-                background: inBin(b) ? '#3b82f6' : '#e2e8f0',
-              }}
-            />
-            {inBin(b) && (
-              <div className="w-1.5 h-1.5 rounded-full bg-blue-600" />
-            )}
-          </div>
-        ))}
-      </div>
-      <div className="flex justify-between text-xs text-gray-400">
-        <span>−19</span>
-        <span>0</span>
-        <span>+17 kcal/mol</span>
+      <div className="flex justify-between text-[11px] text-gray-400 px-0.5">
+        <span>← more stable</span>
+        <span>less stable →</span>
       </div>
     </div>
   );
@@ -218,11 +159,10 @@ export default function Results() {
       prediction._id,
       new Date(prediction.createdAt).toISOString(),
       prediction.dG ?? '',
-      prediction.stability ?? '',
       prediction.seqLen ?? '',
       prediction.modelVersion ?? '',
     ];
-    const csv = 'id,created_at,dG_kcal_mol,stability,seq_len,model_version\n' + row.join(',');
+    const csv = 'id,created_at,dG_kcal_mol,seq_len,model_version\n' + row.join(',');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a'); a.href = url; a.download = `prediction_${id}.csv`; a.click();
@@ -283,7 +223,7 @@ export default function Results() {
 
   // ── ΔG results view (Phase F+) ──────────────────────────────────────────
   if (hasNewDg) {
-    const zone = getZone(prediction.dG);
+    const color = dgColor(prediction.dG);
 
     return (
       <div className="p-6 max-w-4xl mx-auto space-y-5">
@@ -318,15 +258,10 @@ export default function Results() {
               </div>
               <div
                 className="text-5xl font-bold font-mono"
-                style={{ color: zone.color }}>
+                style={{ color }}>
                 {prediction.dG >= 0 ? '+' : ''}{prediction.dG.toFixed(2)}
               </div>
               <div className="text-sm text-gray-500 mt-1">kcal / mol</div>
-              <span
-                className="inline-block mt-3 px-3 py-1 rounded-full text-sm font-semibold"
-                style={{ background: zone.bg, color: zone.text }}>
-                {zone.label}
-              </span>
             </div>
 
             {/* Gauge + explanation */}
@@ -334,19 +269,17 @@ export default function Results() {
               <DgGauge dg={prediction.dG} />
               <p className="text-xs text-gray-400 mt-3">
                 <span className="font-medium text-gray-600">Interpretation:</span>{' '}
-                Positive ΔG = thermodynamically stable (folded state favoured).
-                Negative ΔG = unstable (unfolded state favoured under standard conditions).
-                Training data mean = +1.82 kcal/mol.
+                More negative ΔG = more stable (folded state favoured).
+                More positive ΔG = less stable.
               </p>
             </div>
           </div>
         </div>
 
         {/* KPI row */}
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-3 gap-4">
           {[
-            { icon: Thermometer, label: 'ΔG',         value: `${prediction.dG >= 0 ? '+' : ''}${prediction.dG.toFixed(2)} kcal/mol`, color: zone.color },
-            { icon: CheckCircle2, label: 'Classification', value: zone.label, color: zone.color },
+            { icon: Thermometer, label: 'ΔG',         value: `${prediction.dG >= 0 ? '+' : ''}${prediction.dG.toFixed(2)} kcal/mol`, color },
             { icon: Zap,         label: 'Sequence Length', value: `${prediction.seqLen ?? '—'} aa${prediction.truncated ? ' (truncated)' : ''}`, color: '#6b7280' },
             { icon: Info,        label: 'Inference Time',  value: prediction.latencyMs != null ? `${prediction.latencyMs} ms` : '—', color: '#6b7280' },
           ].map(({ icon: Icon, label, value, color }) => (
@@ -358,12 +291,6 @@ export default function Results() {
               <div className="text-sm font-bold text-gray-900">{value}</div>
             </div>
           ))}
-        </div>
-
-        {/* Training distribution context */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-          <h3 className="font-semibold text-gray-900 mb-3 text-sm">Training Data Context</h3>
-          <DgDistributionBar dg={prediction.dG} />
         </div>
 
         {/* Truncation warning */}

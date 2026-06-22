@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Loader2, FlaskConical, BarChart3, TestTube, AlertCircle, Download, PlayCircle, CheckCircle2, Grid3X3, Upload, X, GitCompare, FileText } from 'lucide-react';
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  ErrorBar, ReferenceLine, Cell,
 } from 'recharts';
 import api from '../services/apiClient';
 
@@ -90,22 +91,15 @@ function PlateHeatmap({ measurements }) {
   const colLabels = Array.from({ length: COLS }, (_, i) => i + 1);
   const rowLabels = Array.from({ length: ROWS }, (_, i) => String.fromCharCode(65 + i));
 
-  // Color: white (low) → blue (mid) → green (high)
+  // Color: white (low) → blue (high). No green — single white→blue ramp.
   function fluorColor(val) {
     if (!val || maxVal === 0) return '#f1f5f9';
-    const t = val / maxVal;
-    if (t < 0.5) {
-      const r = Math.round(255 - t * 2 * (255 - 59));
-      const g = Math.round(255 - t * 2 * (255 - 130));
-      const b = 255;
-      return `rgb(${r},${g},${b})`;
-    } else {
-      const t2 = (t - 0.5) * 2;
-      const r = Math.round(59 - t2 * 59);
-      const g = Math.round(130 + t2 * (197 - 130));
-      const b = Math.round(255 - t2 * (255 - 94));
-      return `rgb(${r},${g},${b})`;
-    }
+    const t = Math.max(0, Math.min(1, val / maxVal));
+    // Interpolate white (#ffffff) → deep blue (#1d4ed8)
+    const r = Math.round(255 + t * (29 - 255));
+    const g = Math.round(255 + t * (78 - 255));
+    const b = Math.round(255 + t * (216 - 255));
+    return `rgb(${r},${g},${b})`;
   }
 
   return (
@@ -146,7 +140,7 @@ function PlateHeatmap({ measurements }) {
       {/* Legend */}
       <div className="flex flex-wrap gap-4 mt-3 text-xs text-gray-500">
         <div className="flex items-center gap-1.5">
-          <div className="w-10 h-3 rounded" style={{ background: 'linear-gradient(to right, #f1f5f9, rgb(59,130,255), rgb(0,197,94))' }} />
+          <div className="w-10 h-3 rounded" style={{ background: 'linear-gradient(to right, #ffffff, #1d4ed8)' }} />
           <span>Low → High fluorescence</span>
         </div>
         {Object.entries(SAMPLE_TYPE_BORDER).filter(([,c]) => c).map(([type, color]) => (
@@ -228,6 +222,45 @@ function buildEndpointData(measurements) {
   })).sort((a, b) => b.fluorescence - a.fluorescence);
 }
 
+// ── Group a derived metric by sample (collapsing replicates) → mean ± SE ──────
+// Returns one row per sample with mean, standard error, n, sampleType, mutation.
+// This is what fixes the "one bar per replicate / duplicated values" bug: each
+// sample appears exactly once, plotted as the replicate mean with an SE error bar.
+function groupMetricBySample(measurements, metricType) {
+  const groups = {};
+  for (const m of measurements) {
+    const d = m.derivedMetrics?.find(x => x.metricType === metricType);
+    if (!d || d.value == null) continue;
+    const base = m.replicateGroup?.replace(/_R\d+$/, '') || m.sampleId || m.sampleType;
+    if (!groups[base]) {
+      groups[base] = {
+        name: m.variant?.name || base,
+        mutation: m.variantDescription || null,   // e.g. "K249T"
+        sampleType: m.sampleType,
+        values: [],
+      };
+    }
+    groups[base].values.push(d.value);
+  }
+
+  return Object.values(groups).map(g => {
+    const n = g.values.length;
+    const mean = g.values.reduce((a, b) => a + b, 0) / n;
+    const sd = n > 1 ? Math.sqrt(g.values.reduce((a, b) => a + (b - mean) ** 2, 0) / (n - 1)) : 0;
+    const se = n > 1 ? sd / Math.sqrt(n) : 0;
+    return {
+      name: g.name,
+      mutation: g.mutation,
+      sampleType: g.sampleType,
+      n,
+      mean: parseFloat(mean.toFixed(3)),
+      se: parseFloat(se.toFixed(3)),
+    };
+  });
+}
+
+const IS_CONTROL = (t) => t !== 'VARIANT';
+
 export default function ExperimentDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -246,7 +279,16 @@ export default function ExperimentDetail() {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [uploadWarnings, setUploadWarnings] = useState([]);
+  const [dragging, setDragging] = useState(false);
   const uploadRef = useRef();
+
+  const acceptDropped = (file) => {
+    if (!file) return;
+    const ok = /\.(csv|xlsx|xls)$/i.test(file.name);
+    if (!ok) { setUploadError('Unsupported file type — use .csv, .xlsx or .xls'); return; }
+    setUploadFile(file);
+    setUploadError('');
+  };
 
   const handleInlineUpload = async () => {
     if (!uploadFile) return;
@@ -389,44 +431,31 @@ export default function ExperimentDetail() {
     return { chartData, series };
   }, [expandedSample, measurements]);
 
-  // ── Best metrics summary (shown when analytics has been run) ──────────────────
+  // ── Best results — TOP 3–5 protein VARIANTS only (controls excluded) ──────────
   const bestMetrics = useMemo(() => {
-    const hls = measurements.flatMap(m => {
-      const hl = m.derivedMetrics?.find(d => d.metricType === 'half_life');
-      return hl ? [{ value: hl.value, r2: hl.goodnessOfFit, label: m.replicateGroup?.split('_R')[0] || m.sampleType }] : [];
-    });
-    const fcs = measurements.flatMap(m => {
-      const fc = m.derivedMetrics?.find(d => d.metricType === 'fold_change');
-      return fc ? [{ value: fc.value, label: m.replicateGroup?.split('_R')[0] || m.sampleType }] : [];
-    });
-    const tms = measurements.flatMap(m => {
-      const tm = m.derivedMetrics?.find(d => d.metricType === 'apparent_tm');
-      return tm ? [{ value: tm.value, r2: tm.goodnessOfFit, label: m.replicateGroup?.split('_R')[0] || m.sampleType }] : [];
-    });
-    if (hls.length === 0 && fcs.length === 0 && tms.length === 0) return null;
+    // Prefer fold-change (endpoint assays); fall back to half-life then Tm.
+    const byFC = groupMetricBySample(measurements, 'fold_change').filter(g => !IS_CONTROL(g.sampleType));
+    const byHL = groupMetricBySample(measurements, 'half_life').filter(g => !IS_CONTROL(g.sampleType));
+    const byTm = groupMetricBySample(measurements, 'apparent_tm').filter(g => !IS_CONTROL(g.sampleType));
 
-    const bestHL = hls.length ? hls.reduce((a, b) => b.value > a.value ? b : a) : null;
-    const bestFC = fcs.length ? fcs.reduce((a, b) => b.value > a.value ? b : a) : null;
-    const bestTm = tms.length ? tms.reduce((a, b) => b.value > a.value ? b : a) : null;
+    let metric = null, rows = [];
+    if (byFC.length)      { metric = { key: 'fold_change', label: 'Fold change vs WT', unit: '×' }; rows = byFC; }
+    else if (byHL.length) { metric = { key: 'half_life',  label: 'Half-life',         unit: ' min' }; rows = byHL; }
+    else if (byTm.length) { metric = { key: 'apparent_tm', label: 'Apparent Tm',       unit: ' °C' }; rows = byTm; }
+    if (!metric) return null;
+
+    const top = [...rows].sort((a, b) => b.mean - a.mean).slice(0, 5);   // 3–5 best variants
     const grubbsCount = measurements.filter(m => m.qcFlags?.includes('grubbs_outlier')).length;
-
-    return { bestHL, bestFC, bestTm, grubbsCount };
+    return { metric, top, grubbsCount };
   }, [measurements]);
 
-  // Fold-change endpoint data (if analytics has been run)
+  // Fold-change chart data — one bar per sample (replicate mean ± SE).
+  // Variants + the WT reference are shown (reference sits at ~1.0×); other
+  // controls are dropped so the comparison stays variant-focused.
   const foldChangeData = useMemo(() => {
-    return measurements
-      .map(m => {
-        const fc = m.derivedMetrics?.find(d => d.metricType === 'fold_change');
-        if (!fc) return null;
-        return {
-          name: m.variant?.name || m.replicateGroup?.split('_R')[0] || m.sampleType,
-          foldChange: fc.value,
-          sampleType: m.sampleType,
-        };
-      })
-      .filter(Boolean)
-      .sort((a, b) => b.foldChange - a.foldChange)
+    return groupMetricBySample(measurements, 'fold_change')
+      .filter(g => g.sampleType === 'VARIANT' || g.sampleType === 'REFERENCE')
+      .sort((a, b) => b.mean - a.mean)
       .slice(0, 30);
   }, [measurements]);
 
@@ -565,11 +594,13 @@ export default function ExperimentDetail() {
         </div>
       </div>
 
-      {/* ── Best metrics summary card ── */}
+      {/* ── Best results — top protein variants (controls excluded) ── */}
       {bestMetrics && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-semibold text-gray-900 text-sm">Best Results — This Experiment</h3>
+          <div className="flex items-center justify-between mb-1">
+            <h3 className="font-semibold text-gray-900 text-sm">
+              Best Variants — Top {bestMetrics.top.length} by {bestMetrics.metric.label}
+            </h3>
             {bestMetrics.grubbsCount > 0 && (
               <span className="flex items-center gap-1.5 text-xs text-amber-600 bg-amber-50 px-2.5 py-1 rounded-full font-medium">
                 <AlertCircle className="w-3.5 h-3.5" />
@@ -577,39 +608,22 @@ export default function ExperimentDetail() {
               </span>
             )}
           </div>
-          <div className="grid grid-cols-3 gap-4">
-            {bestMetrics.bestHL && (
-              <div className="bg-blue-50 rounded-xl p-4">
-                <div className="text-xs text-blue-500 font-medium uppercase tracking-wider mb-1">Best Half-life</div>
-                <div className="text-2xl font-bold text-blue-700 font-mono">{bestMetrics.bestHL.value} <span className="text-sm font-normal">min</span></div>
-                <div className="text-xs text-blue-500 mt-1 truncate">{bestMetrics.bestHL.label}</div>
-                {bestMetrics.bestHL.r2 != null && (
-                  <div className={`text-xs mt-1 font-mono ${bestMetrics.bestHL.r2 >= 0.8 ? 'text-green-600' : 'text-amber-500'}`}>
-                    R² = {bestMetrics.bestHL.r2}
-                  </div>
-                )}
+          <p className="text-xs text-gray-400 mb-3">Protein variants only — controls (hsFAST, WT) excluded. Replicate mean ± SE.</p>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            {bestMetrics.top.map((v, i) => (
+              <div key={v.name} className={`rounded-xl p-3 ${i === 0 ? 'bg-green-50 ring-1 ring-green-200' : 'bg-gray-50'}`}>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold text-gray-500">#{i + 1}</span>
+                  <span className="text-[11px] text-gray-400">n={v.n}</span>
+                </div>
+                <div className="text-lg font-bold font-mono text-green-700 mt-1">
+                  {v.mean}{bestMetrics.metric.unit}
+                  {v.se > 0 && <span className="text-[11px] font-normal text-gray-400"> ±{v.se}</span>}
+                </div>
+                <div className="text-xs font-medium text-gray-800 mt-0.5 truncate" title={v.name}>{v.name}</div>
+                {v.mutation && <div className="text-[11px] text-gray-500 truncate" title={v.mutation}>{v.mutation}</div>}
               </div>
-            )}
-            {bestMetrics.bestFC && (
-              <div className="bg-green-50 rounded-xl p-4">
-                <div className="text-xs text-green-500 font-medium uppercase tracking-wider mb-1">Best Fold Change vs WT</div>
-                <div className="text-2xl font-bold text-green-700 font-mono">{bestMetrics.bestFC.value}<span className="text-sm font-normal">×</span></div>
-                <div className="text-xs text-green-500 mt-1 truncate">{bestMetrics.bestFC.label}</div>
-                <div className="text-xs text-green-400 mt-1">vs WT_HSFAST_FUSION</div>
-              </div>
-            )}
-            {bestMetrics.bestTm && (
-              <div className="bg-red-50 rounded-xl p-4">
-                <div className="text-xs text-red-500 font-medium uppercase tracking-wider mb-1">Best Apparent Tm</div>
-                <div className="text-2xl font-bold text-red-700 font-mono">{bestMetrics.bestTm.value} <span className="text-sm font-normal">°C</span></div>
-                <div className="text-xs text-red-500 mt-1 truncate">{bestMetrics.bestTm.label}</div>
-                {bestMetrics.bestTm.r2 != null && (
-                  <div className={`text-xs mt-1 font-mono ${bestMetrics.bestTm.r2 >= 0.85 ? 'text-green-600' : 'text-amber-500'}`}>
-                    R² = {bestMetrics.bestTm.r2}
-                  </div>
-                )}
-              </div>
-            )}
+            ))}
           </div>
         </div>
       )}
@@ -630,7 +644,12 @@ export default function ExperimentDetail() {
 
           <div
             onClick={() => uploadRef.current?.click()}
+            onDragOver={e => { e.preventDefault(); setDragging(true); }}
+            onDragEnter={e => { e.preventDefault(); setDragging(true); }}
+            onDragLeave={e => { e.preventDefault(); setDragging(false); }}
+            onDrop={e => { e.preventDefault(); setDragging(false); acceptDropped(e.dataTransfer.files?.[0]); }}
             className={`border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-colors ${
+              dragging ? 'border-blue-500 bg-blue-100' :
               uploadFile ? 'border-blue-300 bg-blue-50' : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
             }`}>
             <Upload className={`w-8 h-8 mx-auto mb-2 ${uploadFile ? 'text-blue-500' : 'text-gray-300'}`} />
@@ -843,15 +862,28 @@ export default function ExperimentDetail() {
                   {foldChangeData.length > 0 ? (
                     <>
                       <h3 className="font-semibold text-gray-900 mb-1">Fold Change vs WT Reference</h3>
-                      <p className="text-xs text-gray-400 mb-4">Fluorescence normalised to WT_HSFAST_FUSION mean. Above 1.0 = more stable than WT.</p>
-                      <ResponsiveContainer width="100%" height={320}>
+                      <p className="text-xs text-gray-400 mb-4">
+                        Replicate <strong>mean ± standard error</strong>, normalised to the WT_HSFAST_FUSION mean.
+                        Dashed line = WT (1.0×); above it = more stable than WT.
+                      </p>
+                      <ResponsiveContainer width="100%" height={340}>
                         <BarChart data={foldChangeData} margin={{ top: 5, right: 10, left: 0, bottom: 60 }}>
                           <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                           <XAxis dataKey="name" angle={-45} textAnchor="end" tick={{ fontSize: 9 }} interval={0} />
                           <YAxis tick={{ fontSize: 11 }} />
-                          <Tooltip formatter={(v) => [`${v}×`, 'Fold change vs WT']} />
-                          <Bar dataKey="foldChange" radius={[3, 3, 0, 0]}
-                            fill="#10b981" />
+                          <ReferenceLine y={1} stroke="#f59e0b" strokeDasharray="4 3" label={{ value: 'WT', position: 'right', fontSize: 10, fill: '#f59e0b' }} />
+                          <Tooltip
+                            formatter={(v, _n, p) => [`${v}× ± ${p.payload.se} (n=${p.payload.n})`, 'Fold change vs WT']}
+                            labelFormatter={(l) => {
+                              const row = foldChangeData.find(d => d.name === l);
+                              return row?.mutation ? `${l} (${row.mutation})` : l;
+                            }} />
+                          <Bar dataKey="mean" radius={[3, 3, 0, 0]}>
+                            {foldChangeData.map((d) => (
+                              <Cell key={d.name} fill={d.sampleType === 'REFERENCE' ? '#f59e0b' : '#10b981'} />
+                            ))}
+                            <ErrorBar dataKey="se" width={3} strokeWidth={1} stroke="#475569" direction="y" />
+                          </Bar>
                         </BarChart>
                       </ResponsiveContainer>
                     </>

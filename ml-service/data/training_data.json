@@ -1,7 +1,7 @@
 {
-  "exportedAt": "2026-06-01T13:46:52.741787",
-  "wtKinetic_hl": 13.47267227514196,
-  "wtLysate_ref": 9037.737749054942,
+  "exportedAt": "2026-06-22T13:27:57.807Z",
+  "wtKinetic_hl": 13.47,
+  "wtLysate_ref": 9049.29346040092,
   "wtFACS_pct": 91.7,
   "variants": [
     {
@@ -11,10 +11,16 @@
       "to_aa": "T",
       "position": 249,
       "labels": {
-        "thermal_half_life_min": 12.966,
+        "thermal_half_life_min": 12.963,
         "thermal_half_life_fc": 0.9624,
-        "lysate_fold_change": 0.7726,
-        "facs_fold_change": 0.8997
+        "lysate_fold_change": 0.8018,
+        "facs_fold_change": 0.8997,
+        "thermal_half_life_std": 0.193,
+        "lysate_fc_std": 0.074,
+        "facs_fc_std": 0.0076,
+        "n_kinetic_replicates": 3,
+        "n_lysate_replicates": 3,
+        "n_facs_replicates": 3
       }
     },
     {
@@ -25,9 +31,15 @@
       "position": 90,
       "labels": {
         "thermal_half_life_min": 12.807,
-        "thermal_half_life_fc": 0.9506,
-        "lysate_fold_change": 0.6016,
-        "facs_fold_change": 0.7441
+        "thermal_half_life_fc": 0.9508,
+        "lysate_fold_change": 0.5827,
+        "facs_fold_change": 0.7441,
+        "thermal_half_life_std": 0.355,
+        "lysate_fc_std": 0.0438,
+        "facs_fc_std": 0.0374,
+        "n_kinetic_replicates": 3,
+        "n_lysate_replicates": 3,
+        "n_facs_replicates": 3
       }
     },
     {
@@ -37,10 +49,16 @@
       "to_aa": "Q",
       "position": 190,
       "labels": {
-        "thermal_half_life_min": 3456.693,
-        "thermal_half_life_fc": 256.5707,
-        "lysate_fold_change": 0.0953,
-        "facs_fold_change": 0.1021
+        "thermal_half_life_min": 3456.69,
+        "thermal_half_life_fc": 256.6214,
+        "lysate_fold_change": 0.0933,
+        "facs_fold_change": 0.1021,
+        "thermal_half_life_std": null,
+        "lysate_fc_std": 0.0084,
+        "facs_fc_std": 0.0137,
+        "n_kinetic_replicates": 1,
+        "n_lysate_replicates": 3,
+        "n_facs_replicates": 3
       }
     },
     {
@@ -50,10 +68,16 @@
       "to_aa": "T",
       "position": 65,
       "labels": {
-        "thermal_half_life_min": 13.399,
-        "thermal_half_life_fc": 0.9945,
-        "lysate_fold_change": 0.767,
-        "facs_fold_change": 0.9636
+        "thermal_half_life_min": 13.397,
+        "thermal_half_life_fc": 0.9946,
+        "lysate_fold_change": 0.8323,
+        "facs_fold_change": 0.9636,
+        "thermal_half_life_std": 0.14,
+        "lysate_fc_std": 0.0648,
+        "facs_fc_std": 0.0109,
+        "n_kinetic_replicates": 3,
+        "n_lysate_replicates": 3,
+        "n_facs_replicates": 3
       }
     },
     {
@@ -64,9 +88,15 @@
       "position": 236,
       "labels": {
         "thermal_half_life_min": 15.913,
-        "thermal_half_life_fc": 1.1811,
-        "lysate_fold_change": 0.3516,
-        "facs_fold_change": 0.5936
+        "thermal_half_life_fc": 1.1814,
+        "lysate_fold_change": 0.388,
+        "facs_fold_change": 0.5936,
+        "thermal_half_life_std": 0.932,
+        "lysate_fc_std": 0.0643,
+        "facs_fc_std": 0.0088,
+        "n_kinetic_replicates": 3,
+        "n_lysate_replicates": 3,
+        "n_facs_replicates": 3
       }
     },
     {
@@ -76,10 +106,16 @@
       "to_aa": "R",
       "position": 198,
       "labels": {
-        "thermal_half_life_min": 14.129,
-        "thermal_half_life_fc": 1.0487,
-        "lysate_fold_change": 0.475,
-        "facs_fold_change": 0.7008
+        "thermal_half_life_min": 14.13,
+        "thermal_half_life_fc": 1.049,
+        "lysate_fold_change": 0.5105,
+        "facs_fold_change": 0.7009,
+        "thermal_half_life_std": 1.262,
+        "lysate_fc_std": 0.0487,
+        "facs_fc_std": 0.0285,
+        "n_kinetic_replicates": 3,
+        "n_lysate_replicates": 3,
+        "n_facs_replicates": 3
       }
     },
     {
@@ -89,10 +125,16 @@
       "to_aa": "R",
       "position": 87,
       "labels": {
-        "thermal_half_life_min": 22.277,
-        "thermal_half_life_fc": 1.6535,
-        "lysate_fold_change": 1.8101,
-        "facs_fold_change": 1.0702
+        "thermal_half_life_min": 22.273,
+        "thermal_half_life_fc": 1.6536,
+        "lysate_fold_change": 1.8807,
+        "facs_fold_change": 1.0702,
+        "thermal_half_life_std": 2.026,
+        "lysate_fc_std": 0.0786,
+        "facs_fc_std": 0.0259,
+        "n_kinetic_replicates": 3,
+        "n_lysate_replicates": 3,
+        "n_facs_replicates": 3
       }
     },
     {
@@ -102,10 +144,16 @@
       "to_aa": "M",
       "position": 139,
       "labels": {
-        "thermal_half_life_min": 12.741,
-        "thermal_half_life_fc": 0.9457,
-        "lysate_fold_change": 0.771,
-        "facs_fold_change": 0.8815
+        "thermal_half_life_min": 12.74,
+        "thermal_half_life_fc": 0.9458,
+        "lysate_fold_change": 0.7816,
+        "facs_fold_change": 0.8815,
+        "thermal_half_life_std": 0.131,
+        "lysate_fc_std": 0.124,
+        "facs_fc_std": 0.0379,
+        "n_kinetic_replicates": 3,
+        "n_lysate_replicates": 3,
+        "n_facs_replicates": 3
       }
     },
     {
@@ -116,9 +164,15 @@
       "position": 18,
       "labels": {
         "thermal_half_life_min": 12.89,
-        "thermal_half_life_fc": 0.9567,
-        "lysate_fold_change": 0.5819,
-        "facs_fold_change": 0.8808
+        "thermal_half_life_fc": 0.9569,
+        "lysate_fold_change": 0.6183,
+        "facs_fold_change": 0.8808,
+        "thermal_half_life_std": 0.204,
+        "lysate_fc_std": 0.0523,
+        "facs_fc_std": 0.0085,
+        "n_kinetic_replicates": 3,
+        "n_lysate_replicates": 3,
+        "n_facs_replicates": 3
       }
     },
     {
@@ -128,10 +182,16 @@
       "to_aa": "G",
       "position": 40,
       "labels": {
-        "thermal_half_life_min": 12.785,
-        "thermal_half_life_fc": 0.949,
-        "lysate_fold_change": 0.6185,
-        "facs_fold_change": 0.8862
+        "thermal_half_life_min": 12.787,
+        "thermal_half_life_fc": 0.9493,
+        "lysate_fold_change": 0.7199,
+        "facs_fold_change": 0.8862,
+        "thermal_half_life_std": 0.205,
+        "lysate_fc_std": 0.0844,
+        "facs_fc_std": 0.0077,
+        "n_kinetic_replicates": 3,
+        "n_lysate_replicates": 3,
+        "n_facs_replicates": 3
       }
     },
     {
@@ -141,10 +201,16 @@
       "to_aa": "Q",
       "position": 195,
       "labels": {
-        "thermal_half_life_min": 1328.692,
-        "thermal_half_life_fc": 98.6212,
-        "lysate_fold_change": 0.0841,
-        "facs_fold_change": 0.0356
+        "thermal_half_life_min": 1328.69,
+        "thermal_half_life_fc": 98.6407,
+        "lysate_fold_change": 0.0884,
+        "facs_fold_change": 0.0356,
+        "thermal_half_life_std": null,
+        "lysate_fc_std": 0.0152,
+        "facs_fc_std": 0.0366,
+        "n_kinetic_replicates": 1,
+        "n_lysate_replicates": 3,
+        "n_facs_replicates": 3
       }
     },
     {
@@ -154,10 +220,16 @@
       "to_aa": "V",
       "position": 170,
       "labels": {
-        "thermal_half_life_min": 13.169,
-        "thermal_half_life_fc": 0.9774,
-        "lysate_fold_change": 0.8683,
-        "facs_fold_change": 0.9491
+        "thermal_half_life_min": 13.17,
+        "thermal_half_life_fc": 0.9777,
+        "lysate_fold_change": 0.8883,
+        "facs_fold_change": 0.9491,
+        "thermal_half_life_std": 0.312,
+        "lysate_fc_std": 0.0428,
+        "facs_fc_std": 0.0309,
+        "n_kinetic_replicates": 3,
+        "n_lysate_replicates": 3,
+        "n_facs_replicates": 3
       }
     },
     {
@@ -167,10 +239,16 @@
       "to_aa": "S",
       "position": 172,
       "labels": {
-        "thermal_half_life_min": 12.962,
-        "thermal_half_life_fc": 0.9621,
-        "lysate_fold_change": 0.8157,
-        "facs_fold_change": 0.9498
+        "thermal_half_life_min": 12.963,
+        "thermal_half_life_fc": 0.9624,
+        "lysate_fold_change": 0.8446,
+        "facs_fold_change": 0.9498,
+        "thermal_half_life_std": 0.386,
+        "lysate_fc_std": 0.1189,
+        "facs_fc_std": 0.0208,
+        "n_kinetic_replicates": 3,
+        "n_lysate_replicates": 3,
+        "n_facs_replicates": 3
       }
     },
     {
@@ -180,10 +258,16 @@
       "to_aa": "M",
       "position": 166,
       "labels": {
-        "thermal_half_life_min": 12.834,
-        "thermal_half_life_fc": 0.9526,
-        "lysate_fold_change": 0.7196,
-        "facs_fold_change": 0.9131
+        "thermal_half_life_min": 12.833,
+        "thermal_half_life_fc": 0.9527,
+        "lysate_fold_change": 0.7663,
+        "facs_fold_change": 0.9131,
+        "thermal_half_life_std": 0.154,
+        "lysate_fc_std": 0.0949,
+        "facs_fc_std": 0.0205,
+        "n_kinetic_replicates": 3,
+        "n_lysate_replicates": 3,
+        "n_facs_replicates": 3
       }
     },
     {
@@ -193,10 +277,16 @@
       "to_aa": "N",
       "position": 236,
       "labels": {
-        "thermal_half_life_min": 13.339,
-        "thermal_half_life_fc": 0.99,
-        "lysate_fold_change": 1.029,
-        "facs_fold_change": 0.9746
+        "thermal_half_life_min": 13.34,
+        "thermal_half_life_fc": 0.9903,
+        "lysate_fold_change": 0.946,
+        "facs_fold_change": 0.9745,
+        "thermal_half_life_std": 0.523,
+        "lysate_fc_std": 0.0582,
+        "facs_fc_std": 0.0224,
+        "n_kinetic_replicates": 3,
+        "n_lysate_replicates": 3,
+        "n_facs_replicates": 3
       }
     },
     {
@@ -206,10 +296,16 @@
       "to_aa": "P",
       "position": 16,
       "labels": {
-        "thermal_half_life_min": 2368.664,
-        "thermal_half_life_fc": 175.8125,
-        "lysate_fold_change": 0.0817,
-        "facs_fold_change": 0.0447
+        "thermal_half_life_min": 2368.66,
+        "thermal_half_life_fc": 175.8471,
+        "lysate_fold_change": 0.0857,
+        "facs_fold_change": 0.0447,
+        "thermal_half_life_std": null,
+        "lysate_fc_std": 0.0072,
+        "facs_fc_std": 0.004,
+        "n_kinetic_replicates": 1,
+        "n_lysate_replicates": 3,
+        "n_facs_replicates": 3
       }
     },
     {
@@ -219,10 +315,16 @@
       "to_aa": "L",
       "position": 290,
       "labels": {
-        "thermal_half_life_min": 13.249,
-        "thermal_half_life_fc": 0.9834,
-        "lysate_fold_change": 0.505,
-        "facs_fold_change": 0.7975
+        "thermal_half_life_min": 13.25,
+        "thermal_half_life_fc": 0.9837,
+        "lysate_fold_change": 0.5461,
+        "facs_fold_change": 0.7975,
+        "thermal_half_life_std": 0.565,
+        "lysate_fc_std": 0.083,
+        "facs_fc_std": 0.0458,
+        "n_kinetic_replicates": 3,
+        "n_lysate_replicates": 3,
+        "n_facs_replicates": 3
       }
     },
     {
@@ -233,9 +335,15 @@
       "position": 125,
       "labels": {
         "thermal_half_life_min": 13.227,
-        "thermal_half_life_fc": 0.9817,
-        "lysate_fold_change": 0.6666,
-        "facs_fold_change": 0.9069
+        "thermal_half_life_fc": 0.9819,
+        "lysate_fold_change": 0.7085,
+        "facs_fold_change": 0.9069,
+        "thermal_half_life_std": 0.057,
+        "lysate_fc_std": 0.0503,
+        "facs_fc_std": 0.0137,
+        "n_kinetic_replicates": 3,
+        "n_lysate_replicates": 3,
+        "n_facs_replicates": 3
       }
     },
     {
@@ -245,10 +353,16 @@
       "to_aa": "T",
       "position": 17,
       "labels": {
-        "thermal_half_life_min": 18.705,
-        "thermal_half_life_fc": 1.3884,
-        "lysate_fold_change": 1.7421,
-        "facs_fold_change": 1.0491
+        "thermal_half_life_min": 18.703,
+        "thermal_half_life_fc": 1.3885,
+        "lysate_fold_change": 1.7445,
+        "facs_fold_change": 1.0491,
+        "thermal_half_life_std": 0.735,
+        "lysate_fc_std": 0.2292,
+        "facs_fc_std": 0.0483,
+        "n_kinetic_replicates": 3,
+        "n_lysate_replicates": 3,
+        "n_facs_replicates": 3
       }
     },
     {
@@ -258,10 +372,16 @@
       "to_aa": "T",
       "position": 24,
       "labels": {
-        "thermal_half_life_min": 13.184,
-        "thermal_half_life_fc": 0.9786,
-        "lysate_fold_change": 0.5754,
-        "facs_fold_change": 0.7848
+        "thermal_half_life_min": 13.183,
+        "thermal_half_life_fc": 0.9787,
+        "lysate_fold_change": 0.585,
+        "facs_fold_change": 0.7848,
+        "thermal_half_life_std": 0.316,
+        "lysate_fc_std": 0.1189,
+        "facs_fc_std": 0.012,
+        "n_kinetic_replicates": 3,
+        "n_lysate_replicates": 3,
+        "n_facs_replicates": 3
       }
     },
     {
@@ -271,10 +391,16 @@
       "to_aa": "G",
       "position": 271,
       "labels": {
-        "thermal_half_life_min": 12.997,
-        "thermal_half_life_fc": 0.9647,
-        "lysate_fold_change": 0.8844,
-        "facs_fold_change": 0.9306
+        "thermal_half_life_min": 13,
+        "thermal_half_life_fc": 0.9651,
+        "lysate_fold_change": 0.9149,
+        "facs_fold_change": 0.9306,
+        "thermal_half_life_std": 0.418,
+        "lysate_fc_std": 0.0526,
+        "facs_fc_std": 0.0149,
+        "n_kinetic_replicates": 3,
+        "n_lysate_replicates": 3,
+        "n_facs_replicates": 3
       }
     },
     {
@@ -284,10 +410,16 @@
       "to_aa": "L",
       "position": 197,
       "labels": {
-        "thermal_half_life_min": 1959.214,
-        "thermal_half_life_fc": 145.4213,
-        "lysate_fold_change": 0.0914,
-        "facs_fold_change": 0.0767
+        "thermal_half_life_min": 1959.21,
+        "thermal_half_life_fc": 145.4499,
+        "lysate_fold_change": 0.0952,
+        "facs_fold_change": 0.0767,
+        "thermal_half_life_std": null,
+        "lysate_fc_std": 0.0033,
+        "facs_fc_std": 0.025,
+        "n_kinetic_replicates": 1,
+        "n_lysate_replicates": 3,
+        "n_facs_replicates": 3
       }
     },
     {
@@ -297,10 +429,16 @@
       "to_aa": "N",
       "position": 152,
       "labels": {
-        "thermal_half_life_min": 12.792,
-        "thermal_half_life_fc": 0.9495,
-        "lysate_fold_change": 0.6336,
-        "facs_fold_change": 0.875
+        "thermal_half_life_min": 12.793,
+        "thermal_half_life_fc": 0.9498,
+        "lysate_fold_change": 0.644,
+        "facs_fold_change": 0.875,
+        "thermal_half_life_std": 0.306,
+        "lysate_fc_std": 0.1335,
+        "facs_fc_std": 0.0131,
+        "n_kinetic_replicates": 3,
+        "n_lysate_replicates": 3,
+        "n_facs_replicates": 3
       }
     },
     {
@@ -310,10 +448,16 @@
       "to_aa": "Y",
       "position": 198,
       "labels": {
-        "thermal_half_life_min": 17.464,
-        "thermal_half_life_fc": 1.2962,
-        "lysate_fold_change": 1.3949,
-        "facs_fold_change": 1.0585
+        "thermal_half_life_min": 17.467,
+        "thermal_half_life_fc": 1.2967,
+        "lysate_fold_change": 1.4587,
+        "facs_fold_change": 1.0585,
+        "thermal_half_life_std": 1.155,
+        "lysate_fc_std": 0.1554,
+        "facs_fc_std": 0.0225,
+        "n_kinetic_replicates": 3,
+        "n_lysate_replicates": 3,
+        "n_facs_replicates": 3
       }
     },
     {
@@ -323,10 +467,16 @@
       "to_aa": "I",
       "position": 127,
       "labels": {
-        "thermal_half_life_min": 13.314,
-        "thermal_half_life_fc": 0.9882,
-        "lysate_fold_change": 0.5602,
-        "facs_fold_change": 0.7986
+        "thermal_half_life_min": 13.313,
+        "thermal_half_life_fc": 0.9884,
+        "lysate_fold_change": 0.5893,
+        "facs_fold_change": 0.7986,
+        "thermal_half_life_std": 0.488,
+        "lysate_fc_std": 0.1103,
+        "facs_fc_std": 0.0312,
+        "n_kinetic_replicates": 3,
+        "n_lysate_replicates": 3,
+        "n_facs_replicates": 3
       }
     },
     {
@@ -336,10 +486,16 @@
       "to_aa": "H",
       "position": 55,
       "labels": {
-        "thermal_half_life_min": 13.558,
-        "thermal_half_life_fc": 1.0063,
-        "lysate_fold_change": 0.9787,
-        "facs_fold_change": 0.952
+        "thermal_half_life_min": 13.56,
+        "thermal_half_life_fc": 1.0067,
+        "lysate_fold_change": 0.9933,
+        "facs_fold_change": 0.952,
+        "thermal_half_life_std": 0.474,
+        "lysate_fc_std": 0.1334,
+        "facs_fc_std": 0.0114,
+        "n_kinetic_replicates": 3,
+        "n_lysate_replicates": 3,
+        "n_facs_replicates": 3
       }
     },
     {
@@ -350,9 +506,15 @@
       "position": 38,
       "labels": {
         "thermal_half_life_min": 12.68,
-        "thermal_half_life_fc": 0.9412,
-        "lysate_fold_change": 0.6817,
-        "facs_fold_change": 0.8593
+        "thermal_half_life_fc": 0.9414,
+        "lysate_fold_change": 0.6684,
+        "facs_fold_change": 0.8593,
+        "thermal_half_life_std": 0.36,
+        "lysate_fc_std": 0.0628,
+        "facs_fc_std": 0.0083,
+        "n_kinetic_replicates": 3,
+        "n_lysate_replicates": 3,
+        "n_facs_replicates": 3
       }
     },
     {
@@ -362,10 +524,16 @@
       "to_aa": "S",
       "position": 215,
       "labels": {
-        "thermal_half_life_min": 12.803,
+        "thermal_half_life_min": 12.8,
         "thermal_half_life_fc": 0.9503,
-        "lysate_fold_change": 0.5826,
-        "facs_fold_change": 0.8444
+        "lysate_fold_change": 0.6266,
+        "facs_fold_change": 0.8444,
+        "thermal_half_life_std": 0.209,
+        "lysate_fc_std": 0.0649,
+        "facs_fc_std": 0.033,
+        "n_kinetic_replicates": 3,
+        "n_lysate_replicates": 3,
+        "n_facs_replicates": 3
       }
     },
     {
@@ -377,8 +545,14 @@
       "labels": {
         "thermal_half_life_min": null,
         "thermal_half_life_fc": null,
-        "lysate_fold_change": 0.0637,
-        "facs_fold_change": 0.032
+        "lysate_fold_change": 0.0678,
+        "facs_fold_change": 0.032,
+        "thermal_half_life_std": null,
+        "lysate_fc_std": 0.0145,
+        "facs_fc_std": 0.023,
+        "n_kinetic_replicates": 0,
+        "n_lysate_replicates": 3,
+        "n_facs_replicates": 3
       }
     },
     {
@@ -389,9 +563,15 @@
       "position": 151,
       "labels": {
         "thermal_half_life_min": 12.917,
-        "thermal_half_life_fc": 0.9588,
-        "lysate_fold_change": 0.7623,
-        "facs_fold_change": 0.9509
+        "thermal_half_life_fc": 0.9589,
+        "lysate_fold_change": 0.7813,
+        "facs_fold_change": 0.9509,
+        "thermal_half_life_std": 0.489,
+        "lysate_fc_std": 0.0538,
+        "facs_fc_std": 0.0126,
+        "n_kinetic_replicates": 3,
+        "n_lysate_replicates": 3,
+        "n_facs_replicates": 3
       }
     },
     {
@@ -401,10 +581,16 @@
       "to_aa": "D",
       "position": 150,
       "labels": {
-        "thermal_half_life_min": 12.855,
+        "thermal_half_life_min": 12.853,
         "thermal_half_life_fc": 0.9542,
-        "lysate_fold_change": 0.6881,
-        "facs_fold_change": 0.9029
+        "lysate_fold_change": 0.7501,
+        "facs_fold_change": 0.903,
+        "thermal_half_life_std": 0.435,
+        "lysate_fc_std": 0.0566,
+        "facs_fc_std": 0.0332,
+        "n_kinetic_replicates": 3,
+        "n_lysate_replicates": 3,
+        "n_facs_replicates": 3
       }
     },
     {
@@ -414,10 +600,16 @@
       "to_aa": "L",
       "position": 136,
       "labels": {
-        "thermal_half_life_min": 13.072,
+        "thermal_half_life_min": 13.07,
         "thermal_half_life_fc": 0.9703,
-        "lysate_fold_change": 0.794,
-        "facs_fold_change": 0.9324
+        "lysate_fold_change": 0.8235,
+        "facs_fold_change": 0.9324,
+        "thermal_half_life_std": 0.405,
+        "lysate_fc_std": 0.0159,
+        "facs_fc_std": 0.026,
+        "n_kinetic_replicates": 3,
+        "n_lysate_replicates": 3,
+        "n_facs_replicates": 3
       }
     },
     {
@@ -427,10 +619,16 @@
       "to_aa": "K",
       "position": 76,
       "labels": {
-        "thermal_half_life_min": 3097.409,
-        "thermal_half_life_fc": 229.9031,
-        "lysate_fold_change": 0.0912,
-        "facs_fold_change": 0.0738
+        "thermal_half_life_min": 3097.41,
+        "thermal_half_life_fc": 229.9488,
+        "lysate_fold_change": 0.0928,
+        "facs_fold_change": 0.0738,
+        "thermal_half_life_std": null,
+        "lysate_fc_std": 0.0088,
+        "facs_fc_std": 0.0259,
+        "n_kinetic_replicates": 1,
+        "n_lysate_replicates": 3,
+        "n_facs_replicates": 3
       }
     },
     {
@@ -440,10 +638,16 @@
       "to_aa": "Q",
       "position": 188,
       "labels": {
-        "thermal_half_life_min": 14.307,
-        "thermal_half_life_fc": 1.0619,
-        "lysate_fold_change": 0.986,
-        "facs_fold_change": 1.0258
+        "thermal_half_life_min": 14.31,
+        "thermal_half_life_fc": 1.0624,
+        "lysate_fold_change": 0.9757,
+        "facs_fold_change": 1.0258,
+        "thermal_half_life_std": 0.416,
+        "lysate_fc_std": 0.0791,
+        "facs_fc_std": 0.0271,
+        "n_kinetic_replicates": 3,
+        "n_lysate_replicates": 3,
+        "n_facs_replicates": 3
       }
     },
     {
@@ -454,9 +658,15 @@
       "position": 283,
       "labels": {
         "thermal_half_life_min": 12.947,
-        "thermal_half_life_fc": 0.961,
-        "lysate_fold_change": 0.6258,
-        "facs_fold_change": 0.8262
+        "thermal_half_life_fc": 0.9611,
+        "lysate_fold_change": 0.7084,
+        "facs_fold_change": 0.8263,
+        "thermal_half_life_std": 0.605,
+        "lysate_fc_std": 0.0766,
+        "facs_fc_std": 0.0045,
+        "n_kinetic_replicates": 3,
+        "n_lysate_replicates": 3,
+        "n_facs_replicates": 3
       }
     },
     {
@@ -466,10 +676,16 @@
       "to_aa": "I",
       "position": 41,
       "labels": {
-        "thermal_half_life_min": 13.321,
-        "thermal_half_life_fc": 0.9887,
-        "lysate_fold_change": 0.5617,
-        "facs_fold_change": 0.8117
+        "thermal_half_life_min": 13.323,
+        "thermal_half_life_fc": 0.9891,
+        "lysate_fold_change": 0.5553,
+        "facs_fold_change": 0.8117,
+        "thermal_half_life_std": 0.338,
+        "lysate_fc_std": 0.0692,
+        "facs_fc_std": 0.0191,
+        "n_kinetic_replicates": 3,
+        "n_lysate_replicates": 3,
+        "n_facs_replicates": 3
       }
     },
     {
@@ -479,10 +695,16 @@
       "to_aa": "Y",
       "position": 113,
       "labels": {
-        "thermal_half_life_min": 13.225,
-        "thermal_half_life_fc": 0.9816,
-        "lysate_fold_change": 0.541,
-        "facs_fold_change": 0.7703
+        "thermal_half_life_min": 13.223,
+        "thermal_half_life_fc": 0.9817,
+        "lysate_fold_change": 0.5564,
+        "facs_fold_change": 0.7703,
+        "thermal_half_life_std": 0.412,
+        "lysate_fc_std": 0.0553,
+        "facs_fc_std": 0.0131,
+        "n_kinetic_replicates": 3,
+        "n_lysate_replicates": 3,
+        "n_facs_replicates": 3
       }
     },
     {
@@ -492,10 +714,16 @@
       "to_aa": "L",
       "position": 208,
       "labels": {
-        "thermal_half_life_min": 16.572,
+        "thermal_half_life_min": 16.57,
         "thermal_half_life_fc": 1.2301,
-        "lysate_fold_change": 1.2792,
-        "facs_fold_change": 1.0247
+        "lysate_fold_change": 1.2551,
+        "facs_fold_change": 1.0247,
+        "thermal_half_life_std": 1.089,
+        "lysate_fc_std": 0.0411,
+        "facs_fc_std": 0.0192,
+        "n_kinetic_replicates": 3,
+        "n_lysate_replicates": 3,
+        "n_facs_replicates": 3
       }
     },
     {
@@ -506,9 +734,15 @@
       "position": 227,
       "labels": {
         "thermal_half_life_min": 12.887,
-        "thermal_half_life_fc": 0.9565,
-        "lysate_fold_change": 0.7869,
-        "facs_fold_change": 0.9535
+        "thermal_half_life_fc": 0.9567,
+        "lysate_fold_change": 0.8175,
+        "facs_fold_change": 0.9535,
+        "thermal_half_life_std": 0.097,
+        "lysate_fc_std": 0.0757,
+        "facs_fc_std": 0.0258,
+        "n_kinetic_replicates": 3,
+        "n_lysate_replicates": 3,
+        "n_facs_replicates": 3
       }
     },
     {
@@ -519,9 +753,15 @@
       "position": 231,
       "labels": {
         "thermal_half_life_min": 13.233,
-        "thermal_half_life_fc": 0.9822,
-        "lysate_fold_change": 0.948,
-        "facs_fold_change": 0.9473
+        "thermal_half_life_fc": 0.9824,
+        "lysate_fold_change": 0.9867,
+        "facs_fold_change": 0.9473,
+        "thermal_half_life_std": 0.247,
+        "lysate_fc_std": 0.0808,
+        "facs_fc_std": 0.0033,
+        "n_kinetic_replicates": 3,
+        "n_lysate_replicates": 3,
+        "n_facs_replicates": 3
       }
     },
     {
@@ -531,10 +771,16 @@
       "to_aa": "R",
       "position": 234,
       "labels": {
-        "thermal_half_life_min": 6465.815,
-        "thermal_half_life_fc": 479.9207,
-        "lysate_fold_change": 0.0744,
-        "facs_fold_change": 0.0502
+        "thermal_half_life_min": 6465.81,
+        "thermal_half_life_fc": 480.0156,
+        "lysate_fold_change": 0.0764,
+        "facs_fold_change": 0.0501,
+        "thermal_half_life_std": null,
+        "lysate_fc_std": 0.0186,
+        "facs_fc_std": 0.0219,
+        "n_kinetic_replicates": 1,
+        "n_lysate_replicates": 3,
+        "n_facs_replicates": 3
       }
     },
     {
@@ -545,9 +791,15 @@
       "position": 86,
       "labels": {
         "thermal_half_life_min": 13.17,
-        "thermal_half_life_fc": 0.9775,
-        "lysate_fold_change": 0.5137,
-        "facs_fold_change": 0.8099
+        "thermal_half_life_fc": 0.9777,
+        "lysate_fold_change": 0.5663,
+        "facs_fold_change": 0.8099,
+        "thermal_half_life_std": 0.66,
+        "lysate_fc_std": 0.0504,
+        "facs_fc_std": 0.0309,
+        "n_kinetic_replicates": 3,
+        "n_lysate_replicates": 3,
+        "n_facs_replicates": 3
       }
     },
     {
@@ -557,10 +809,16 @@
       "to_aa": "D",
       "position": 136,
       "labels": {
-        "thermal_half_life_min": 13.359,
-        "thermal_half_life_fc": 0.9916,
-        "lysate_fold_change": 0.5883,
-        "facs_fold_change": 0.7779
+        "thermal_half_life_min": 13.36,
+        "thermal_half_life_fc": 0.9918,
+        "lysate_fold_change": 0.6093,
+        "facs_fold_change": 0.7779,
+        "thermal_half_life_std": 0.2,
+        "lysate_fc_std": 0.0589,
+        "facs_fc_std": 0.0158,
+        "n_kinetic_replicates": 3,
+        "n_lysate_replicates": 3,
+        "n_facs_replicates": 3
       }
     },
     {
@@ -570,10 +828,16 @@
       "to_aa": "D",
       "position": 138,
       "labels": {
-        "thermal_half_life_min": 12.795,
-        "thermal_half_life_fc": 0.9497,
-        "lysate_fold_change": 0.7761,
-        "facs_fold_change": 0.928
+        "thermal_half_life_min": 12.797,
+        "thermal_half_life_fc": 0.95,
+        "lysate_fold_change": 0.7824,
+        "facs_fold_change": 0.928,
+        "thermal_half_life_std": 0.074,
+        "lysate_fc_std": 0.0259,
+        "facs_fc_std": 0.0033,
+        "n_kinetic_replicates": 3,
+        "n_lysate_replicates": 3,
+        "n_facs_replicates": 3
       }
     },
     {
@@ -583,10 +847,16 @@
       "to_aa": "E",
       "position": 215,
       "labels": {
-        "thermal_half_life_min": 15.972,
-        "thermal_half_life_fc": 1.1855,
-        "lysate_fold_change": 1.2844,
-        "facs_fold_change": 1.008
+        "thermal_half_life_min": 15.973,
+        "thermal_half_life_fc": 1.1858,
+        "lysate_fold_change": 1.3248,
+        "facs_fold_change": 1.008,
+        "thermal_half_life_std": 0.09,
+        "lysate_fc_std": 0.0331,
+        "facs_fc_std": 0.006,
+        "n_kinetic_replicates": 3,
+        "n_lysate_replicates": 3,
+        "n_facs_replicates": 3
       }
     },
     {
@@ -596,10 +866,16 @@
       "to_aa": "T",
       "position": 174,
       "labels": {
-        "thermal_half_life_min": 13.304,
-        "thermal_half_life_fc": 0.9875,
-        "lysate_fold_change": 0.7773,
-        "facs_fold_change": 0.9317
+        "thermal_half_life_min": 13.303,
+        "thermal_half_life_fc": 0.9876,
+        "lysate_fold_change": 0.8909,
+        "facs_fold_change": 0.9317,
+        "thermal_half_life_std": 0.13,
+        "lysate_fc_std": 0.0967,
+        "facs_fc_std": 0.0207,
+        "n_kinetic_replicates": 3,
+        "n_lysate_replicates": 3,
+        "n_facs_replicates": 3
       }
     },
     {
@@ -609,10 +885,16 @@
       "to_aa": "E",
       "position": 140,
       "labels": {
-        "thermal_half_life_min": 1126.804,
-        "thermal_half_life_fc": 83.6363,
-        "lysate_fold_change": 0.0913,
-        "facs_fold_change": 0.0938
+        "thermal_half_life_min": 1126.805,
+        "thermal_half_life_fc": 83.6529,
+        "lysate_fold_change": 0.0941,
+        "facs_fold_change": 0.0938,
+        "thermal_half_life_std": 181.79,
+        "lysate_fc_std": 0.0026,
+        "facs_fc_std": 0.0457,
+        "n_kinetic_replicates": 2,
+        "n_lysate_replicates": 3,
+        "n_facs_replicates": 3
       }
     },
     {
@@ -622,10 +904,16 @@
       "to_aa": "A",
       "position": 225,
       "labels": {
-        "thermal_half_life_min": 13.821,
-        "thermal_half_life_fc": 1.0258,
-        "lysate_fold_change": 0.5022,
-        "facs_fold_change": 0.7401
+        "thermal_half_life_min": 13.82,
+        "thermal_half_life_fc": 1.026,
+        "lysate_fold_change": 0.5052,
+        "facs_fold_change": 0.7401,
+        "thermal_half_life_std": 0.161,
+        "lysate_fc_std": 0.0305,
+        "facs_fc_std": 0.0105,
+        "n_kinetic_replicates": 3,
+        "n_lysate_replicates": 3,
+        "n_facs_replicates": 3
       }
     },
     {
@@ -635,10 +923,16 @@
       "to_aa": "R",
       "position": 198,
       "labels": {
-        "thermal_half_life_min": 12.882,
-        "thermal_half_life_fc": 0.9562,
-        "lysate_fold_change": 0.7835,
-        "facs_fold_change": 0.9364
+        "thermal_half_life_min": 12.883,
+        "thermal_half_life_fc": 0.9564,
+        "lysate_fold_change": 0.7656,
+        "facs_fold_change": 0.9364,
+        "thermal_half_life_std": 0.281,
+        "lysate_fc_std": 0.0388,
+        "facs_fc_std": 0.0396,
+        "n_kinetic_replicates": 3,
+        "n_lysate_replicates": 3,
+        "n_facs_replicates": 3
       }
     },
     {
@@ -648,10 +942,16 @@
       "to_aa": "G",
       "position": 188,
       "labels": {
-        "thermal_half_life_min": 744.177,
-        "thermal_half_life_fc": 55.236,
-        "lysate_fold_change": 0.0996,
-        "facs_fold_change": 0.1003
+        "thermal_half_life_min": 744.18,
+        "thermal_half_life_fc": 55.2472,
+        "lysate_fold_change": 0.1004,
+        "facs_fold_change": 0.1003,
+        "thermal_half_life_std": null,
+        "lysate_fc_std": 0.0148,
+        "facs_fc_std": 0.0197,
+        "n_kinetic_replicates": 1,
+        "n_lysate_replicates": 3,
+        "n_facs_replicates": 3
       }
     }
   ]

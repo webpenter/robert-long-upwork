@@ -22,18 +22,20 @@ const KD = {
 };
 
 function stabilityLabel(dg) {
-  if (dg >  3.0) return 'highly stable';
-  if (dg >  0.5) return 'stable';
-  if (dg > -0.5) return 'marginally stable';
-  if (dg > -3.0) return 'unstable';
+  // Client convention: NEGATIVE ΔG = more stable.
+  if (dg < -3.0) return 'highly stable';
+  if (dg < -0.5) return 'stable';
+  if (dg <  0.5) return 'marginally stable';
+  if (dg <  3.0) return 'unstable';
   return 'highly unstable';
 }
 
 function buildFallbackResult(seq) {
   const kdVals = seq.split('').map(aa => KD[aa] ?? 0.0);
   const mean   = kdVals.reduce((s, v) => s + v, 0) / kdVals.length;
-  // Linear scaling: avg KD ∈ [-4.5, 4.5] → ΔG ∈ [-6, 6]
-  const dg = parseFloat((mean * 1.33).toFixed(4));
+  // Linear scaling: avg KD ∈ [-4.5, 4.5] → ΔG ∈ [-6, 6].
+  // Negated so the fallback follows the client convention (negative ΔG = more stable).
+  const dg = parseFloat((-mean * 1.33).toFixed(4));
   return {
     dg,
     stability:    stabilityLabel(dg),

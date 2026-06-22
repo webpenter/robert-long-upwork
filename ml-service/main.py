@@ -228,7 +228,11 @@ def predict(req: PredictRequest):
         raise HTTPException(400, f"Invalid amino acid characters: {sorted(bad)}")
 
     t0  = time.perf_counter()
-    dg  = predict_one(seq, _model, DEVICE)
+    # Client convention: NEGATIVE ΔG = more stable. The model is trained on dmsv4
+    # `deltaG` (positive = more stable), so we negate at the API boundary so every
+    # downstream consumer (DB, CSV, dashboard, chat) is consistent. Displayed ΔG
+    # therefore equals -(dmsv4 deltaG).
+    dg  = round(-predict_one(seq, _model, DEVICE), 4)
     ms  = round((time.perf_counter() - t0) * 1000, 2)
 
     return PredictResponse(
@@ -260,7 +264,7 @@ def predict_batch_endpoint(req: BatchRequest):
             bad = set(seq) - VALID_AAS
             if bad:
                 raise ValueError(f"Invalid characters: {sorted(bad)}")
-            dg = predict_one(seq, _model, DEVICE)
+            dg = round(-predict_one(seq, _model, DEVICE), 4)  # negate: negative ΔG = more stable
             results.append(BatchResultItem(
                 id=item.id, dg=dg, stability=stability_label(dg),
                 seq_len=len(seq), error=None,
@@ -290,7 +294,7 @@ def predict_quick(seq: str = Query(..., description="Amino acid sequence")):
         raise HTTPException(400, f"Invalid characters: {sorted(bad)}")
 
     t0 = time.perf_counter()
-    dg = predict_one(seq_clean, _model, DEVICE)
+    dg = round(-predict_one(seq_clean, _model, DEVICE), 4)  # negate: negative ΔG = more stable
     ms = round((time.perf_counter() - t0) * 1000, 2)
     return {
         "seq": seq_clean, "dg": dg, "stability": stability_label(dg),

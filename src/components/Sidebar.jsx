@@ -19,7 +19,7 @@ export default function Sidebar() {
       ],
     },
     {
-      label: 'Data Layer',
+      label: 'Data Analysis',
       items: [
         { to: '/experiments', icon: BarChart3, label: 'Experiments' },
         { to: '/variants', icon: Dna, label: 'Variants' },

@@ -25,6 +25,34 @@ export function parseFASTA(input) {
   return { header: header || 'Unknown Protein', sequence };
 }
 
+// Parse one OR many sequences. Multiple records must be in FASTA format,
+// each starting with a '>' header line. Header-less input is treated as a
+// single sequence (back-compat with the original single-sequence flow).
+export function parseMultiFASTA(input) {
+  const text = (input || '').trim();
+  if (!text) return [];
+
+  if (!text.includes('>')) {
+    const { header, sequence } = parseFASTA(text);
+    return sequence ? [{ header, sequence }] : [];
+  }
+
+  const records = [];
+  let cur = null;
+  for (const line of text.split('\n')) {
+    if (line.startsWith('>')) {
+      if (cur) records.push(cur);
+      cur = { header: line.slice(1).trim() || `Sequence ${records.length + 1}`, sequence: '' };
+    } else {
+      const clean = line.trim().toUpperCase().replace(/\s/g, '');
+      if (!cur) cur = { header: 'Sequence 1', sequence: '' };
+      cur.sequence += clean;
+    }
+  }
+  if (cur) records.push(cur);
+  return records.filter(r => r.sequence.length > 0);
+}
+
 export function validateSequence(sequence) {
   if (!sequence || sequence.length === 0) return { valid: false, error: 'Sequence is empty' };
   if (sequence.length < 10) return { valid: false, error: 'Sequence too short (minimum 10 amino acids)' };

@@ -29,6 +29,36 @@ export default function ExperimentUpload() {
   const [uploadError, setUploadError] = useState('');
   const [uploadDone, setUploadDone] = useState(false);
   const [uploadWarnings, setUploadWarnings] = useState([]);
+  const [dragging, setDragging] = useState(false);
+
+  // Inline "new project" creation
+  const [showNewProject, setShowNewProject] = useState(false);
+  const [newProjectName, setNewProjectName] = useState('');
+  const [creatingProject, setCreatingProject] = useState(false);
+
+  const createProject = async () => {
+    if (!newProjectName.trim()) return;
+    setCreatingProject(true);
+    setFormError('');
+    try {
+      const { project } = await api.post('/projects', { name: newProjectName.trim() });
+      setProjects(prev => [project, ...prev]);
+      setForm(f => ({ ...f, projectId: project._id }));
+      setShowNewProject(false);
+      setNewProjectName('');
+    } catch (err) {
+      setFormError(err.message || 'Failed to create project');
+    } finally {
+      setCreatingProject(false);
+    }
+  };
+
+  const acceptDropped = (f) => {
+    if (!f) return;
+    if (!/\.(csv|xlsx|xls)$/i.test(f.name)) { setUploadError('Unsupported file type — use .csv, .xlsx or .xls'); return; }
+    setFile(f);
+    setUploadError('');
+  };
 
   useEffect(() => {
     api.get('/projects').then(({ projects }) => {
@@ -139,12 +169,32 @@ export default function ExperimentUpload() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Project <span className="text-red-500">*</span></label>
-                <select value={form.projectId} onChange={set('projectId')}
-                  className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
-                  {projects.length === 0 && <option value="">Loading...</option>}
-                  {projects.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
-                </select>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-sm font-medium text-gray-700">Project <span className="text-red-500">*</span></label>
+                  <button type="button" onClick={() => { setShowNewProject(v => !v); setFormError(''); }}
+                    className="text-xs text-blue-600 hover:text-blue-700 font-medium">
+                    {showNewProject ? 'Cancel' : '+ New project'}
+                  </button>
+                </div>
+                {showNewProject ? (
+                  <div className="flex gap-2">
+                    <input autoFocus value={newProjectName}
+                      onChange={e => setNewProjectName(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); createProject(); } }}
+                      placeholder="New project name"
+                      className="flex-1 px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    <button type="button" onClick={createProject} disabled={!newProjectName.trim() || creatingProject}
+                      className="px-3 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white rounded-lg text-sm font-medium whitespace-nowrap">
+                      {creatingProject ? '…' : 'Create'}
+                    </button>
+                  </div>
+                ) : (
+                  <select value={form.projectId} onChange={set('projectId')}
+                    className="w-full px-3 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                    {projects.length === 0 && <option value="">No projects yet — click “+ New project”</option>}
+                    {projects.map(p => <option key={p._id} value={p._id}>{p.name}</option>)}
+                  </select>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Assay type <span className="text-red-500">*</span></label>
@@ -259,7 +309,12 @@ export default function ExperimentUpload() {
               {/* Drop zone */}
               <div
                 onClick={() => fileRef.current?.click()}
+                onDragOver={e => { e.preventDefault(); setDragging(true); }}
+                onDragEnter={e => { e.preventDefault(); setDragging(true); }}
+                onDragLeave={e => { e.preventDefault(); setDragging(false); }}
+                onDrop={e => { e.preventDefault(); setDragging(false); acceptDropped(e.dataTransfer.files?.[0]); }}
                 className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-colors ${
+                  dragging ? 'border-blue-500 bg-blue-100' :
                   file ? 'border-blue-300 bg-blue-50' : 'border-gray-200 hover:border-blue-300 hover:bg-gray-50'
                 }`}>
                 <FileSpreadsheet className={`w-10 h-10 mx-auto mb-3 ${file ? 'text-blue-500' : 'text-gray-300'}`} />

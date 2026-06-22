@@ -35,6 +35,13 @@ export function AppProvider({ children }) {
     return prediction;
   };
 
+  // Submit many sequences at once → one prediction per sequence
+  const addPredictionsBatch = async ({ sequences, conditions }) => {
+    const { predictions: created } = await api.post('/predictions/batch', { sequences, conditions });
+    setPredictions((prev) => [...created, ...prev]);
+    return created;
+  };
+
   // Poll a prediction until it leaves QUEUED/RUNNING
   const pollPrediction = useCallback(async (id, onUpdate, intervalMs = 2000) => {
     return new Promise((resolve, reject) => {
@@ -72,6 +79,7 @@ export function AppProvider({ children }) {
       fetchPredictions,
       addProject,
       addPrediction,
+      addPredictionsBatch,
       pollPrediction,
       getPrediction,
     }}>

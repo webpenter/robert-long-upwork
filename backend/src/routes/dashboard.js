@@ -52,9 +52,11 @@ router.get('/stats', async (req, res, next) => {
         { $group: { _id: '$assayType', count: { $sum: 1 } } },
         { $sort: { count: -1 } },
       ]),
-      Prediction.aggregate([
-        { $match: { ...predFilter, status: 'COMPLETED' } },
-        { $group: { _id: null, total: { $sum: '$candidatesCount' } } },
+      // "Mutations analyzed" = point mutations recorded across screened variants
+      // (from uploaded experiment data, e.g. V001 = K249T).
+      Variant.aggregate([
+        { $unwind: '$mutations' },
+        { $count: 'total' },
       ]),
       Prediction.find(predFilter)
         .select('status fastaSequence conditions candidatesCount createdAt modelVersion tier')

@@ -79,6 +79,53 @@ router.post(
   }
 );
 
+// POST /api/predictions/batch — create one prediction per sequence
+router.post(
+  '/batch',
+  [
+    body('sequences').isArray({ min: 1 }).withMessage('sequences must be a non-empty array'),
+    body('conditions').optional().isObject(),
+  ],
+  async (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
+
+    const { sequences, conditions, projectId } = req.body;
+    if (sequences.length > 100) {
+      return res.status(400).json({ error: 'Maximum 100 sequences per batch' });
+    }
+
+    try {
+      const created = [];
+      for (const s of sequences) {
+        // Accept either a ready FASTA string or {header, sequence}
+        const fastaSequence =
+          s.fastaSequence ||
+          (s.header ? `>${s.header}\n${s.sequence}` : s.sequence);
+        if (!fastaSequence || !String(fastaSequence).trim()) continue;
+
+        const prediction = await Prediction.create({
+          user: req.user._id,
+          project: projectId || undefined,
+          fastaSequence,
+          conditions,
+          tier: req.user.tier,
+          status: 'QUEUED',
+        });
+        runPrediction(prediction._id).catch(console.error);
+        created.push(prediction);
+      }
+
+      if (created.length === 0) {
+        return res.status(400).json({ error: 'No valid sequences provided' });
+      }
+      res.status(201).json({ predictions: created });
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
 // POST /api/predictions/:id/chat — Gold tier only
 router.post('/:id/chat', async (req, res, next) => {
   if (req.user.tier !== 'GOLD') {

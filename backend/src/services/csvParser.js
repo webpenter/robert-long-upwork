@@ -2,6 +2,8 @@ const fs   = require('fs');
 const path = require('path');
 const XLSX = require('xlsx');
 const Measurement = require('../models/Measurement');
+const Experiment  = require('../models/Experiment');
+const Variant     = require('../models/Variant');
 
 // ── Lightweight CSV parser (handles quoted fields with commas) ──────────────
 
@@ -92,6 +94,55 @@ function toSampleType(sampleClass, sampleId) {
 function num(v) {
   const n = parseFloat(v);
   return isNaN(n) ? null : n;
+}
+
+// ── Variant linking ───────────────────────────────────────────────────────────
+// Parse a Variant_Description like "K249T" (or "K249T, A12V") into point mutations.
+function parseMutations(desc) {
+  if (!desc) return [];
+  const out = [];
+  for (const part of String(desc).split(/[,;+/\s]+/).filter(Boolean)) {
+    const m = part.match(/^([A-Za-z])(\d+)([A-Za-z])$/);
+    if (m) out.push({ from: m[1].toUpperCase(), position: Number(m[2]), to: m[3].toUpperCase(), notation: part.toUpperCase() });
+  }
+  return out;
+}
+
+// After measurements are inserted, create/link a Variant per Library_Variant sample
+// so the Variants tab, Mutations heatmap and dashboard counters all populate.
+// Idempotent: re-running upserts by (project, name) and re-links measurements.
+async function linkVariantsForExperiment(experimentId) {
+  const exp = await Experiment.findById(experimentId).select('project');
+  if (!exp?.project) return { variantsCreated: 0, measurementsLinked: 0 };
+  const project = exp.project;
+
+  const measurements = await Measurement.find({ experiment: experimentId, sampleType: 'VARIANT' })
+    .select('_id sampleId variantDescription');
+
+  const groups = {};
+  for (const m of measurements) {
+    const sid = (m.sampleId || '').trim();
+    if (!sid) continue;
+    if (!groups[sid]) groups[sid] = { desc: '', ids: [] };
+    if (!groups[sid].desc && m.variantDescription) groups[sid].desc = m.variantDescription;
+    groups[sid].ids.push(m._id);
+  }
+
+  let variantsCreated = 0, measurementsLinked = 0;
+  for (const [sid, g] of Object.entries(groups)) {
+    const mutations = parseMutations(g.desc);
+    let variant = await Variant.findOne({ project, name: sid });
+    if (!variant) {
+      variant = await Variant.create({ project, name: sid, mutations, familyAnnotation: g.desc || undefined });
+      variantsCreated++;
+    } else if ((!variant.mutations || variant.mutations.length === 0) && mutations.length) {
+      variant.mutations = mutations;
+      await variant.save();
+    }
+    const r = await Measurement.updateMany({ _id: { $in: g.ids } }, { variant: variant._id });
+    measurementsLinked += r.modifiedCount || 0;
+  }
+  return { variantsCreated, measurementsLinked };
 }
 
 // ── Parsers ──────────────────────────────────────────────────────────────────
@@ -289,13 +340,21 @@ async function parseUploadedFile(filePath, experimentId) {
     );
   }
 
+  let result;
   switch (fileType) {
-    case 'PLATE_READER_ENDPOINT':     return parsePlateReaderEndpoint(rows, experimentId);
-    case 'FACS':                      return parseFACS(rows, experimentId);
-    case 'KINETIC_DENATURATION':      return parseKineticDenaturation(rows, experimentId);
-    case 'THERMAL_DENATURATION_CURVE': return parseThermalDenaturationCurve(rows, experimentId);
-    case 'STANDARD_CURVE':            return parseStandardCurve(rows, experimentId);
+    case 'PLATE_READER_ENDPOINT':      result = await parsePlateReaderEndpoint(rows, experimentId); break;
+    case 'FACS':                       result = await parseFACS(rows, experimentId); break;
+    case 'KINETIC_DENATURATION':       result = await parseKineticDenaturation(rows, experimentId); break;
+    case 'THERMAL_DENATURATION_CURVE': result = await parseThermalDenaturationCurve(rows, experimentId); break;
+    case 'STANDARD_CURVE':             result = await parseStandardCurve(rows, experimentId); break;
   }
+
+  // Create/link Variant records for Library_Variant samples (skip for standard curves).
+  if (fileType !== 'STANDARD_CURVE') {
+    const link = await linkVariantsForExperiment(experimentId);
+    result = { ...result, ...link };
+  }
+  return result;
 }
 
 // ── Upload validation ─────────────────────────────────────────────────────────
