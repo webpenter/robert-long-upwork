@@ -43,7 +43,7 @@ def main():
         commit_message="Deploy hsFAST ML service",
     )
 
-    print(f"\n[deploy] done → https://huggingface.co/spaces/{repo_id}")
+    print(f"\n[deploy] done -> https://huggingface.co/spaces/{repo_id}")
     print("[deploy] the Space will build (Docker) for a few minutes; watch the logs there.")
     print("[deploy] then copy the Space's public URL and set it on Render as:")
     print("           ML_SERVICE_URL = https://<that-space-url>")
