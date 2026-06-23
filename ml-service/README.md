@@ -19,8 +19,9 @@ Node/Express API, not directly by the browser.
 ## Endpoints
 - `GET  /health` — liveness + model status
 - `GET  /model/info` — architecture + training metadata
-- `POST /predict` — ΔG for a single sequence
+- `POST /predict` — ΔG for a single sequence (negative ΔG = more stable)
 - `POST /predict/batch` — ΔG for up to 100 sequences
+- `POST /suggest` — residue-level ΔΔG scan → ranked stabilizing mutations + hotspots
 - `GET  /dataset/stats` — training dataset statistics
 
 ## Notes
