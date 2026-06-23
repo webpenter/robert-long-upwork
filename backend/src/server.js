@@ -31,13 +31,28 @@ app.use(morgan('dev'));
 
 const isDev = process.env.NODE_ENV !== 'production';
 
-// In dev, reflect any origin back (127.0.0.1, localhost, any Vite port)
-app.use(cors({
-  origin: isDev
-    ? (origin, cb) => cb(null, origin || '*')
-    : (process.env.FRONTEND_URL || 'http://localhost:5173'),
-  credentials: true,
-}));
+// Production allow-list: comma-separated FRONTEND_URL entries (trailing slashes
+// stripped) plus any *.vercel.app origin so Vercel preview deploys keep working.
+const allowedOrigins = (process.env.FRONTEND_URL || '')
+  .split(',')
+  .map((s) => s.trim().replace(/\/$/, ''))
+  .filter(Boolean);
+
+function corsOrigin(origin, cb) {
+  // Dev: reflect any origin (127.0.0.1, localhost, any Vite port).
+  if (isDev) return cb(null, origin || '*');
+  // Allow server-to-server / curl (no Origin header).
+  if (!origin) return cb(null, true);
+  const clean = origin.replace(/\/$/, '');
+  let host = '';
+  try { host = new URL(clean).hostname; } catch { /* ignore */ }
+  if (allowedOrigins.includes(clean) || /\.vercel\.app$/.test(host)) {
+    return cb(null, true);
+  }
+  return cb(new Error(`Not allowed by CORS: ${origin}`));
+}
+
+app.use(cors({ origin: corsOrigin, credentials: true }));
 
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
