@@ -302,6 +302,105 @@ def predict_quick(seq: str = Query(..., description="Amino acid sequence")):
     }
 
 
+# ── Residue-level stabilizing-mutation scan ──────────────────────────────────
+# Given a sequence, mutate every position to every other amino acid, predict ΔG
+# for each variant, and rank by ΔΔG = ΔG(mutant) − ΔG(WT). Convention (client):
+# more negative ΔG = more stable → NEGATIVE ΔΔG = STABILISING.
+
+AA20 = "ACDEFGHIKLMNPQRSTVWY"
+
+
+class SuggestRequest(BaseModel):
+    seq:          Optional[str] = None
+    sequence:     Optional[str] = None
+    top_k:        int           = 30
+    predictionId: str           = ""
+
+
+@app.post("/suggest")
+def suggest(req: SuggestRequest):
+    _require_model()
+    from protstab_predict import predict_one, predict_batch
+
+    raw = req.seq or req.sequence or ""
+    if not raw.strip():
+        raise HTTPException(400, "Provide 'seq' or 'sequence' with an amino acid sequence")
+
+    seq, truncated = _clean_seq(raw)
+    if len(seq) < 10:
+        raise HTTPException(400, "Sequence too short (minimum 10 amino acids)")
+    bad = set(seq) - VALID_AAS
+    if bad:
+        raise HTTPException(400, f"Invalid amino acid characters: {sorted(bad)}")
+
+    t0 = time.perf_counter()
+    wt_dg = round(-predict_one(seq, _model, DEVICE), 4)   # negated: negative = more stable
+
+    # Build all single-point mutants (position × 19 substitutions)
+    mutants, meta = [], []
+    for i, wt_aa in enumerate(seq):
+        if wt_aa not in AA20:
+            continue
+        for aa in AA20:
+            if aa == wt_aa:
+                continue
+            mutants.append(seq[:i] + aa + seq[i + 1:])
+            meta.append((i, wt_aa, aa))
+
+    # Chunked batch inference (avoid one giant tensor)
+    preds = []
+    B = 64
+    for k in range(0, len(mutants), B):
+        preds.extend(predict_batch(mutants[k:k + B], _model, DEVICE))
+
+    candidates = []
+    for (i, wt_aa, aa), p in zip(meta, preds):
+        dg = round(-p, 4)                 # negated convention
+        ddg = round(dg - wt_dg, 4)        # negative ΔΔG = stabilising
+        candidates.append({
+            "position":      i + 1,
+            "originalAa":    wt_aa,
+            "substitutedAa": aa,
+            "mutation":      f"{wt_aa}{i + 1}{aa}",
+            "dg":            dg,
+            "ddG":           ddg,
+        })
+
+    candidates.sort(key=lambda c: c["ddG"])   # most stabilising first
+    for r, c in enumerate(candidates, 1):
+        c["rank"] = r
+
+    # Per-position hotspot map
+    by_pos = {}
+    for c in candidates:
+        by_pos.setdefault(c["position"], []).append(c)
+    strongest = min((c["ddG"] for c in candidates), default=-1e-9)
+    hotspots = []
+    for pos, lst in by_pos.items():
+        best = min(c["ddG"] for c in lst)
+        sp = round(best / strongest, 3) if (best < 0 and strongest < 0) else 0.0
+        tol = round(sum(1 for c in lst if c["ddG"] <= 0.5) / len(lst), 3)
+        hotspots.append({
+            "position":               pos,
+            "residue":                lst[0]["originalAa"],
+            "stabilizationPotential": min(1.0, sp),
+            "mutationalTolerance":    tol,
+        })
+    hotspots.sort(key=lambda h: h["position"])
+
+    ms = round((time.perf_counter() - t0) * 1000, 2)
+    return {
+        "wt_dg":      wt_dg,
+        "seq_len":    len(seq),
+        "truncated":  truncated,
+        "n_scanned":  len(mutants),
+        "model_name": _active_model_name(),
+        "candidates": candidates[:max(1, req.top_k)],
+        "hotspotMap": hotspots,
+        "latency_ms": ms,
+    }
+
+
 @app.get("/dataset/stats")
 def dataset_stats():
     """Training dataset statistics — used by Dataset Explorer UI."""

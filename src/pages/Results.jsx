@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+  BarChart, Bar, Cell, XAxis, YAxis, CartesianGrid, Tooltip,
   ReferenceLine, ResponsiveContainer,
 } from 'recharts';
 import {
@@ -123,6 +123,61 @@ function LegacyMutationView({ prediction }) {
             </tbody>
           </table>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Suggested stabilizing mutations (residue-level ΔΔG scan) ───────────────────
+function StabilizingMutations({ candidates }) {
+  if (!candidates?.length) return null;
+  const top = candidates.slice(0, 15).map(c => ({ name: c.mutation, ddG: c.ddG }));
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 space-y-4">
+      <div>
+        <h3 className="font-semibold text-gray-900 text-sm">Suggested Stabilizing Mutations</h3>
+        <p className="text-xs text-gray-400 mt-0.5">
+          Single-point ΔΔG scan across every position. <span className="text-green-600 font-medium">Negative ΔΔG = stabilizing</span> (lowers ΔG). Ranked best first.
+        </p>
+      </div>
+
+      <ResponsiveContainer width="100%" height={220}>
+        <BarChart data={top} margin={{ top: 5, right: 10, left: -10, bottom: 45 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+          <XAxis dataKey="name" angle={-45} textAnchor="end" tick={{ fontSize: 10 }} interval={0} />
+          <YAxis tick={{ fontSize: 10 }} />
+          <ReferenceLine y={0} stroke="#9ca3af" />
+          <Tooltip formatter={(v) => [`${v} kcal/mol`, 'ΔΔG']} />
+          <Bar dataKey="ddG" radius={[3, 3, 0, 0]}>
+            {top.map((d, i) => <Cell key={i} fill={d.ddG < 0 ? '#16a34a' : '#dc2626'} />)}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-left border-b border-gray-100 bg-gray-50">
+              <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Rank</th>
+              <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Mutation</th>
+              <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Position</th>
+              <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">ΔΔG (kcal/mol)</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-50">
+            {candidates.slice(0, 30).map(c => (
+              <tr key={c.rank} className="hover:bg-gray-50">
+                <td className="px-3 py-2 text-gray-500">#{c.rank}</td>
+                <td className="px-3 py-2 font-mono font-semibold text-gray-900">{c.mutation}</td>
+                <td className="px-3 py-2 text-gray-600">{c.position}</td>
+                <td className="px-3 py-2 font-mono font-medium" style={{ color: c.ddG < 0 ? '#16a34a' : '#dc2626' }}>
+                  {c.ddG > 0 ? '+' : ''}{c.ddG?.toFixed(2)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );
@@ -292,6 +347,9 @@ export default function Results() {
             </div>
           ))}
         </div>
+
+        {/* Suggested stabilizing mutations (ΔΔG scan) */}
+        <StabilizingMutations candidates={prediction.candidates} />
 
         {/* Truncation warning */}
         {prediction.truncated && (

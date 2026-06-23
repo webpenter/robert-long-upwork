@@ -88,15 +88,49 @@ async function runPrediction(predictionId) {
       model_name  = 'protstab_cnn_v0',
     } = result;
 
+    // ── Residue-level stabilizing-mutation scan (ΔΔG) ────────────────────────
+    // Runs only when the ML service is available (the fallback can't scan).
+    // Long timeout: a full position×AA scan is many forward passes.
+    let candidates = [];
+    let hotspotMap = [];
+    if (usedMLService) {
+      try {
+        const scan = await postToMLService(
+          '/suggest',
+          { sequence: seq, top_k: 30, predictionId: String(predictionId) },
+          300000,
+        );
+        candidates = (scan.candidates || []).map(c => ({
+          rank:          c.rank,
+          mutation:      c.mutation,
+          position:      c.position,
+          originalAa:    c.originalAa,
+          substitutedAa: c.substitutedAa,
+          ddG:           c.ddG,
+        }));
+        hotspotMap = (scan.hotspotMap || []).map(h => ({
+          position:               h.position,
+          residue:                h.residue,
+          stabilizationPotential: h.stabilizationPotential,
+          mutationalTolerance:    h.mutationalTolerance,
+        }));
+      } catch (scanErr) {
+        console.warn(`[prediction] stabilizing-mutation scan skipped (${scanErr.message})`);
+      }
+    }
+
     await Prediction.findByIdAndUpdate(predictionId, {
-      status:       'COMPLETED',
-      dG:           dg,
+      status:          'COMPLETED',
+      dG:              dg,
       stability,
-      seqLen:       seq_len,
+      seqLen:          seq_len,
       truncated,
-      latencyMs:    latency_ms,
-      modelVersion: usedMLService ? model_name : `${model_name} [fallback]`,
-      completedAt:  new Date(),
+      latencyMs:       latency_ms,
+      modelVersion:    usedMLService ? model_name : `${model_name} [fallback]`,
+      candidates,
+      hotspotMap,
+      candidatesCount: candidates.length,
+      completedAt:     new Date(),
     });
 
   } catch (err) {
