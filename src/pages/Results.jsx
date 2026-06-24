@@ -131,26 +131,32 @@ function LegacyMutationView({ prediction }) {
 // ── Suggested stabilizing mutations (residue-level ΔΔG scan) ───────────────────
 function StabilizingMutations({ candidates }) {
   if (!candidates?.length) return null;
-  const top = candidates.slice(0, 15).map(c => ({ name: c.mutation, ddG: c.ddG }));
+  // Plot stabilization magnitude (−ΔΔG) as upward bars from zero: taller = more
+  // stabilizing. The signed ΔΔG is kept in the tooltip and the table below.
+  const top = candidates.slice(0, 15).map(c => ({
+    name: c.mutation,
+    stab: parseFloat((-c.ddG).toFixed(3)),
+    ddG:  c.ddG,
+  }));
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 space-y-4">
       <div>
         <h3 className="font-semibold text-gray-900 text-sm">Suggested Stabilizing Mutations</h3>
         <p className="text-xs text-gray-400 mt-0.5">
-          Single-point ΔΔG scan across every position. <span className="text-green-600 font-medium">Negative ΔΔG = stabilizing</span> (lowers ΔG). Ranked best first.
+          Single-point ΔΔG scan across every position. Bars show <span className="text-green-600 font-medium">stabilization (−ΔΔG)</span> — taller = more stabilizing. Ranked best first.
         </p>
       </div>
 
-      <ResponsiveContainer width="100%" height={220}>
-        <BarChart data={top} margin={{ top: 5, right: 10, left: -10, bottom: 45 }}>
+      <ResponsiveContainer width="100%" height={240}>
+        <BarChart data={top} margin={{ top: 5, right: 10, left: 0, bottom: 50 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-          <XAxis dataKey="name" angle={-45} textAnchor="end" tick={{ fontSize: 10 }} interval={0} />
-          <YAxis tick={{ fontSize: 10 }} />
-          <ReferenceLine y={0} stroke="#9ca3af" />
-          <Tooltip formatter={(v) => [`${v} kcal/mol`, 'ΔΔG']} />
-          <Bar dataKey="ddG" radius={[3, 3, 0, 0]}>
-            {top.map((d, i) => <Cell key={i} fill={d.ddG < 0 ? '#16a34a' : '#dc2626'} />)}
+          <XAxis dataKey="name" angle={-45} textAnchor="end" tick={{ fontSize: 10 }} interval={0} height={55} />
+          <YAxis tick={{ fontSize: 10 }} domain={[0, 'auto']}
+            label={{ value: '−ΔΔG (kcal/mol)', angle: -90, position: 'insideLeft', fontSize: 10, style: { textAnchor: 'middle' } }} />
+          <Tooltip formatter={(v, _n, p) => [`ΔΔG = ${p.payload.ddG >= 0 ? '+' : ''}${p.payload.ddG.toFixed(2)} kcal/mol`, p.payload.ddG < 0 ? 'Stabilizing' : 'Destabilizing']} />
+          <Bar dataKey="stab" radius={[3, 3, 0, 0]}>
+            {top.map((d, i) => <Cell key={i} fill={d.stab >= 0 ? '#16a34a' : '#dc2626'} />)}
           </Bar>
         </BarChart>
       </ResponsiveContainer>
