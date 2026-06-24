@@ -362,10 +362,10 @@ export default function Results() {
           <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl p-4">
             <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-semibold text-amber-800">Sequence truncated to 256 aa</p>
+              <p className="text-sm font-semibold text-amber-800">Sequence truncated to {prediction.seqLen} aa</p>
               <p className="text-xs text-amber-700 mt-0.5">
-                ProtStabCNN was trained on sequences ≤ 256 residues. The first 256 amino acids were used for prediction.
-                Phase 2 (ESM2-35M fine-tune) will support longer sequences.
+                The current ESM2-35M model evaluates the first {prediction.seqLen} residues, so ΔG and the
+                mutation scan cover only that region. Removing this length cap (full-length support) is the next model improvement.
               </p>
             </div>
           </div>

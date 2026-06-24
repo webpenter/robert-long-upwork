@@ -95,7 +95,8 @@ router.get('/stats', async (req, res, next) => {
       recentExperiments,
       mlService: {
         online:     mlHealth?.status === 'ok',
-        modelReady: mlHealth?.modelReady ?? false,
+        // /health reports `model_loaded`; treat a loaded model as ready.
+        modelReady: (mlHealth?.model_loaded ?? mlHealth?.modelReady) ?? false,
         ...(mlInfo ?? {}),
       },
     });

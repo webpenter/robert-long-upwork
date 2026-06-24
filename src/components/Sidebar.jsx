@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, FlaskConical, Settings, LogOut, Upload, Dna, BarChart3, Brain, GitCompare, Microscope, Database } from 'lucide-react';
+import { LayoutDashboard, FlaskConical, Settings, LogOut, Upload, Dna, BarChart3, Brain, GitCompare, Microscope } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function Sidebar() {
@@ -21,7 +21,7 @@ export default function Sidebar() {
     {
       label: 'Data Analysis',
       items: [
-        { to: '/experiments', icon: BarChart3, label: 'Experiments' },
+        { to: '/experiments', icon: BarChart3, label: 'Experiments', end: true },
         { to: '/variants', icon: Dna, label: 'Variants' },
         { to: '/compare', icon: GitCompare, label: 'Compare' },
         { to: '/mutations', icon: Microscope, label: 'Mutations' },
@@ -32,7 +32,6 @@ export default function Sidebar() {
       label: 'ML Predictions',
       items: [
         { to: '/predict', icon: FlaskConical, label: 'New Prediction' },
-        { to: '/dataset-explorer', icon: Database, label: 'Dataset Explorer' },
         ...(isAdmin ? [{ to: '/model', icon: Brain, label: 'Model Manager' }] : []),
       ],
     },
@@ -65,8 +64,8 @@ export default function Sidebar() {
           <div key={label}>
             <p className="text-slate-500 text-xs font-semibold uppercase tracking-wider px-3 mb-1">{label}</p>
             <nav className="space-y-0.5">
-              {items.map(({ to, icon: Icon, label: itemLabel }) => (
-                <NavLink key={to} to={to}
+              {items.map(({ to, icon: Icon, label: itemLabel, end }) => (
+                <NavLink key={to} to={to} end={end}
                   className={({ isActive }) =>
                     `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
                       isActive ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400 hover:text-white hover:bg-slate-800'

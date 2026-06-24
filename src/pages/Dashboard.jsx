@@ -66,16 +66,16 @@ function ModelStatusCard({ ml, loading }) {
     );
   }
 
+  const vm = ml?.val_metrics ?? {};
+  const num3 = (v) => (v == null ? null : Number(v).toFixed(3));
   const rows = ml?.modelReady && ml?.online
     ? [
-        { label: 'Algorithm',        value: ml.algorithm,                      mono: true  },
-        { label: 'Training variants', value: ml.nVariants,                      mono: false },
-        { label: 'Features',          value: ml.nFeatures,                      mono: false },
-        { label: 'LOO R²',            value: ml.looR2?.toFixed(3),              mono: true  },
-        { label: 'LOO RMSE',          value: ml.looRMSE?.toFixed(3),            mono: true  },
-        { label: 'Stability range',   value: ml.stabilityRange
-            ? `${ml.stabilityRange.min?.toFixed(2)} – ${ml.stabilityRange.max?.toFixed(2)}`
-            : null,                                                              mono: true  },
+        { label: 'Model',         value: ml.name,                                       mono: true  },
+        { label: 'Type',          value: ml.model_type,                                 mono: true  },
+        { label: 'Parameters',    value: ml.parameters?.toLocaleString?.() ?? ml.parameters, mono: false },
+        { label: 'Pearson r',     value: num3(vm.pearson_r),                            mono: true  },
+        { label: 'RMSE',          value: num3(vm.rmse),                                 mono: true  },
+        { label: 'Training data', value: ml.training_data,                              mono: false },
       ]
     : [];
 
@@ -109,15 +109,15 @@ function ModelStatusCard({ ml, loading }) {
           <div className="mt-4 flex items-center gap-2 px-3 py-2 bg-green-50 rounded-lg">
             <CheckCircle2 className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />
             <span className="text-xs text-green-700 font-medium">
-              Model ready · {ml.nVariants} variants · {ml.nFeatures} features
+              Model ready · {ml.name || ml.model_type || 'loaded'}
             </span>
           </div>
         </>
       ) : ml?.online ? (
         <div className="flex-1 flex flex-col items-center justify-center py-4 text-center space-y-2">
           <AlertCircle className="w-8 h-8 text-amber-400" />
-          <p className="text-sm font-medium text-gray-700">Service online — model not trained</p>
-          <p className="text-xs text-gray-400">POST /train to train from CSV data</p>
+          <p className="text-sm font-medium text-gray-700">Service online — model not loaded</p>
+          <p className="text-xs text-gray-400">Check the ML service checkpoint / startup logs</p>
         </div>
       ) : (
         <div className="flex-1 flex flex-col items-center justify-center py-4 text-center space-y-2">
@@ -171,7 +171,11 @@ function CampaignTrend({ projects }) {
   const [loading,   setLoading]   = useState(false);
 
   useEffect(() => {
-    if (projects.length > 0 && !projectId) setProjectId(projects[0]._id);
+    if (projects.length > 0 && !projectId) {
+      // Prefer a project that actually has experiments so the chart isn't empty by default.
+      const withData = projects.find(p => (p.experimentCount || 0) > 0) || projects[0];
+      setProjectId(withData._id);
+    }
   }, [projects, projectId]);
 
   useEffect(() => {
@@ -182,6 +186,18 @@ function CampaignTrend({ projects }) {
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [projectId]);
+
+  // If the selected metric has no data but another does, switch to the richest one
+  // (e.g. endpoint-only projects have fold-change but no half-life).
+  useEffect(() => {
+    if (!data?.experiments?.length) return;
+    const counts = CAMPAIGN_METRICS.map(cm => data.experiments.filter(e => e[cm.key] != null).length);
+    if (counts[metric] === 0) {
+      const best = counts.indexOf(Math.max(...counts));
+      if (counts[best] > 0) setMetric(best);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data]);
 
   const m = CAMPAIGN_METRICS[metric];
   const hasData = data?.experiments?.some(e => e[m.key] != null);

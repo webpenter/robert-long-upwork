@@ -16,7 +16,6 @@ import VariantDetail from './pages/VariantDetail';
 import ModelManagement from './pages/ModelManagement';
 import Compare from './pages/Compare';
 import MutationView from './pages/MutationView';
-import DatasetExplorer from './pages/DatasetExplorer';
 import Layout from './components/Layout';
 
 function ProtectedRoute({ children }) {
@@ -50,7 +49,6 @@ function AppRoutes() {
       <Route path="/model" element={<ProtectedRoute><Layout><ModelManagement /></Layout></ProtectedRoute>} />
       <Route path="/compare" element={<ProtectedRoute><Layout><Compare /></Layout></ProtectedRoute>} />
       <Route path="/mutations" element={<ProtectedRoute><Layout><MutationView /></Layout></ProtectedRoute>} />
-      <Route path="/dataset-explorer" element={<ProtectedRoute><Layout><DatasetExplorer /></Layout></ProtectedRoute>} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   );
