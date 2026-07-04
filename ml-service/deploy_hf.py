@@ -39,7 +39,11 @@ def main():
         folder_path=here,
         repo_id=repo_id,
         repo_type="space",
-        ignore_patterns=["__pycache__/*", "*.pyc", ".git/*", "*.rar", "eval_dmsv4.py", "deploy_hf.py"],
+        ignore_patterns=[
+            "__pycache__/*", "*.pyc", ".git/*", "*.rar", "eval_dmsv4.py", "deploy_hf.py",
+            # only best_model.pt is served — don't ship local backups/duplicates
+            "models/best_model_r8_backup.pt", "models/best_model_esm2 (1).pt",
+        ],
         commit_message="Deploy hsFAST ML service",
     )
 
