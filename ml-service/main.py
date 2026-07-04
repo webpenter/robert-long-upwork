@@ -189,15 +189,15 @@ def model_info():
         return {
             "name":          _meta.get("model_name", "esm2_t12_35M_lora"),
             "model_type":    "esm2_lora",
-            "architecture":  "ESM2-35M (facebook/esm2_t12_35M_UR50D) + LoRA r=8 on q/k/v, "
+            "architecture":  "ESM2-35M (facebook/esm2_t12_35M_UR50D) + LoRA r=16 on q/k/v, "
                              "masked-mean pool → LayerNorm → MLP(480→256→64→1)",
             "parameters":    _model.count_parameters(),       # trainable (LoRA + head)
-            "input":         "tokenized protein sequence, max 256 aa",
-            "output":        "ΔG (kcal/mol) — positive = stable, negative = unstable",
-            "training_data": "DMSv4 filtered (455,589 sequences)",
+            "input":         "tokenized protein sequence, first 80 aa (small-domain scope)",
+            "output":        "ΔG (kcal/mol) — more negative = more stable (platform convention)",
+            "training_data": "~3.3M small-domain sequences (DMSv4/v5/v7 + Megascale DMS + MGnify)",
             "val_metrics":   _meta.get("val_metrics"),
             "epoch":         _meta.get("epoch"),
-            "phase":         "Phase 2 — ESM2-35M LoRA fine-tune",
+            "phase":         "ESM2-35M LoRA r16 fine-tune",
         }
     return {
         "name":          "protstab_cnn_v0",
@@ -437,13 +437,13 @@ def dataset_stats():
     """Training dataset statistics — used by Dataset Explorer UI."""
     return {
         "modelVersion":    _active_model_name(),
-        "architecture":    "1D CNN (3 ConvBlocks + MLP head)",
+        "architecture":    "ESM2-35M + LoRA r=16 (masked-mean pool + MLP head)",
         "parameters":      _model.count_parameters() if _model else None,
-        "nTrainingSeqs":   455589,
+        "nTrainingSeqs":   3300000,
         "splits": {
-            "train": 364471,
-            "val":   45559,
-            "test":  45559,
+            "train": 3200000,
+            "val":   817,
+            "test":  3282,
         },
         "dgStats": {
             "mean": 1.815,
@@ -459,8 +459,8 @@ def dataset_stats():
             "note": "Validation metrics from training checkpoint" if _meta.get("val_metrics")
                     else "Run POST /train to evaluate on val split",
         },
-        "trainingData":  "DMSv4 filtered (Boltzmann K50 → ΔG conversion)",
-        "phase":         "Phase 1 prototype — ESM2-35M fine-tune planned for Phase 2",
+        "trainingData":  "~3.3M small-domain sequences (DMSv4/v5/v7 + Megascale DMS + MGnify), K50 → ΔG",
+        "phase":         "ESM2-35M LoRA r16 fine-tune",
         "modelLoaded":   _model is not None,
         "checkpointPath": str(CHECKPOINT),
     }
