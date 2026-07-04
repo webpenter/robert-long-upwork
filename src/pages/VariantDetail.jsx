@@ -1,7 +1,33 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Loader2, Dna, FlaskConical, BarChart3, ChevronRight } from 'lucide-react';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ErrorBar, ResponsiveContainer,
+} from 'recharts';
 import api from '../services/apiClient';
+
+const METRIC_UNIT = {
+  apparent_tm: '°C', half_life: 'min', fold_change: '×', rate_constant: '', ec50: '', other: '',
+};
+
+// Group this variant's measurements by experiment and reduce replicates to mean ± SE.
+function groupMetricByExperiment(measurements, metricType) {
+  const groups = {};
+  for (const m of measurements) {
+    const d = m.derivedMetrics?.find(x => x.metricType === metricType);
+    if (!d || d.value == null) continue;
+    const key = m.experiment?._id || m.experiment?.name || 'Unknown';
+    if (!groups[key]) groups[key] = { name: m.experiment?.name || 'Unknown', values: [] };
+    groups[key].values.push(d.value);
+  }
+  return Object.values(groups).map(g => {
+    const n = g.values.length;
+    const mean = g.values.reduce((a, b) => a + b, 0) / n;
+    const sd = n > 1 ? Math.sqrt(g.values.reduce((a, b) => a + (b - mean) ** 2, 0) / (n - 1)) : 0;
+    const se = n > 1 ? sd / Math.sqrt(n) : 0;
+    return { name: g.name, n, mean: parseFloat(mean.toFixed(3)), se: parseFloat(se.toFixed(3)) };
+  });
+}
 
 const ASSAY_COLORS = {
   THERMAL: 'bg-red-100 text-red-700',
@@ -28,6 +54,20 @@ export default function VariantDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [seqExpanded, setSeqExpanded] = useState(false);
+  const [metric, setMetric] = useState(null);
+
+  // Which derived metrics does this variant actually have data for?
+  const availableMetrics = useMemo(() => {
+    const set = new Set();
+    measurements.forEach(m => m.derivedMetrics?.forEach(d => { if (d.value != null) set.add(d.metricType); }));
+    return [...set];
+  }, [measurements]);
+
+  const activeMetric = metric && availableMetrics.includes(metric) ? metric : availableMetrics[0];
+  const chartData = useMemo(
+    () => (activeMetric ? groupMetricByExperiment(measurements, activeMetric) : []),
+    [measurements, activeMetric],
+  );
 
   useEffect(() => {
     api.get(`/variants/${id}`)
@@ -159,6 +199,44 @@ export default function VariantDetail() {
           ))}
         </div>
       </div>
+
+      {/* Performance chart (mean ± SE per experiment) */}
+      {chartData.length > 0 && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+          <div className="flex items-center justify-between flex-wrap gap-3 mb-1">
+            <h3 className="font-semibold text-gray-900">Performance Across Experiments</h3>
+            {availableMetrics.length > 1 && (
+              <div className="flex gap-1 bg-gray-100 rounded-lg p-0.5">
+                {availableMetrics.map(mt => (
+                  <button key={mt} onClick={() => setMetric(mt)}
+                    className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+                      mt === activeMetric ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                    }`}>
+                    {METRIC_LABELS[mt] || mt}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+          <p className="text-xs text-gray-400 mb-4">
+            {METRIC_LABELS[activeMetric] || activeMetric} — replicate <strong>mean ± standard error</strong> for each experiment this variant appears in.
+          </p>
+          <ResponsiveContainer width="100%" height={320}>
+            <BarChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 60 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis dataKey="name" angle={-45} textAnchor="end" tick={{ fontSize: 9 }} interval={0} />
+              <YAxis tick={{ fontSize: 11 }} />
+              <Tooltip formatter={(v, _n, p) => [
+                `${v}${METRIC_UNIT[activeMetric] || ''} ± ${p.payload.se} (n=${p.payload.n})`,
+                METRIC_LABELS[activeMetric] || activeMetric,
+              ]} />
+              <Bar dataKey="mean" fill="#3b82f6" radius={[3, 3, 0, 0]}>
+                <ErrorBar dataKey="se" width={3} strokeWidth={1} stroke="#475569" direction="y" />
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
 
       {/* Measurements history */}
       {measurements.length === 0 ? (

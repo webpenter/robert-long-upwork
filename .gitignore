@@ -39,3 +39,7 @@ dist-ssr
 
 # archives
 *.rar
+
+# local-only model backups / uploads (only best_model.pt is deployed)
+ml-service/models/best_model_r8_backup.pt
+ml-service/models/best_model_esm2 (1).pt

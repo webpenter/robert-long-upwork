@@ -55,7 +55,8 @@ router.post(
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ errors: errors.array() });
 
-    const { fastaSequence, conditions, projectId, variantId, proposedMutations, constraints } = req.body;
+    const { fastaSequence, conditions, projectId, variantId, proposedMutations, constraints,
+            suggestTopK, residueSelection } = req.body;
     try {
       const prediction = await Prediction.create({
         user: req.user._id,
@@ -65,6 +66,8 @@ router.post(
         conditions,
         proposedMutations: proposedMutations || [],
         constraints: constraints || '',
+        suggestTopK: Number(suggestTopK) > 0 ? Number(suggestTopK) : undefined,
+        residueSelection: residueSelection || '',
         tier: req.user.tier,
         status: 'QUEUED',
       });
@@ -158,8 +161,8 @@ function applyTierFilter(prediction, tier) {
   if (tier === 'BRONZE' && prediction.candidates) {
     return {
       ...prediction,
-      candidates: prediction.candidates.map(({ rank, mutation, position, originalAa, substitutedAa }) => ({
-        rank, mutation, position, originalAa, substitutedAa,
+      candidates: prediction.candidates.map(({ rank, mutation, position, originalAa, substitutedAa, confidence }) => ({
+        rank, mutation, position, originalAa, substitutedAa, confidence,
       })),
       hotspotMap: [],
       chatMessages: [],

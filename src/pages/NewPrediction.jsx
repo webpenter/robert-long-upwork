@@ -15,6 +15,8 @@ export default function NewPrediction() {
   const [fastaInfo, setFastaInfo]   = useState(null);
   const [running, setRunning]       = useState(false);
   const [progress, setProgress]     = useState(0);
+  const [topK, setTopK]             = useState(50);
+  const [residueSelection, setResidueSelection] = useState('');
 
   const fastaRef = useRef();
   const { addPrediction, addPredictionsBatch, pollPrediction } = useApp();
@@ -49,7 +51,7 @@ export default function NewPrediction() {
         mw:       features.estimatedMW,
         charged:  features.chargedFraction,
         hydro:    features.avgHydrophobicity,
-        truncWarning: features.length > 256,
+        truncWarning: features.length > 80,
       });
     } else {
       setFastaInfo({ multi: true, count: records.length });
@@ -87,7 +89,12 @@ export default function NewPrediction() {
 
     try {
       if (records.length === 1) {
-        const prediction = await addPrediction({ fastaSequence: fasta, conditions: {} });
+        const prediction = await addPrediction({
+          fastaSequence:    fasta,
+          conditions:       {},
+          suggestTopK:      Number(topK) > 0 ? Number(topK) : 50,
+          residueSelection: residueSelection.trim(),
+        });
         await pollPrediction(prediction._id, (updated) => {
           if (updated.status === 'RUNNING') setProgress(p => Math.min(p + 5, 92));
         });
@@ -124,11 +131,11 @@ export default function NewPrediction() {
             }
           </div>
           <h2 className="text-xl font-semibold text-gray-900 mb-2">
-            {progress < 100 ? 'Running ProtStabCNN Prediction' : 'Analysis Complete'}
+            {progress < 100 ? 'Running ESM2-LoRA Prediction' : 'Analysis Complete'}
           </h2>
           <p className="text-gray-500 text-sm mb-6">
-            {progress < 40  ? 'Encoding sequence...' :
-             progress < 70  ? 'Running CNN inference...' :
+            {progress < 40  ? 'Tokenizing sequence...' :
+             progress < 70  ? 'Running ESM2 inference...' :
              progress < 95  ? 'Computing ΔG...' :
              progress < 100 ? 'Saving results...' : 'Redirecting...'}
           </p>
@@ -142,8 +149,8 @@ export default function NewPrediction() {
 
           <div className="mt-8 grid grid-cols-3 gap-3 max-w-xs mx-auto text-xs">
             {[
-              { label: 'Encode', done: progress > 30 },
-              { label: 'CNN Inference', done: progress > 65 },
+              { label: 'Tokenize', done: progress > 30 },
+              { label: 'ESM2 Inference', done: progress > 65 },
               { label: 'ΔG', done: progress > 90 },
             ].map(({ label, done }) => (
               <div key={label} className="bg-gray-50 rounded-lg p-3 text-center">
@@ -168,7 +175,7 @@ export default function NewPrediction() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Stability Prediction</h1>
         <p className="text-gray-500 text-sm mt-1">
-          Predict thermodynamic stability (ΔG kcal/mol) from protein sequence using ProtStabCNN
+          Predict thermodynamic stability (ΔG kcal/mol) from protein sequence using an ESM2-LoRA model
         </p>
       </div>
 
@@ -176,8 +183,9 @@ export default function NewPrediction() {
       <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 mb-5 text-sm">
         <Zap className="w-4 h-4 text-blue-600 flex-shrink-0" />
         <div className="text-blue-800">
-          <span className="font-semibold">ProtStabCNN v0</span> — Pre-trained on 455,589 protein sequences (DMSv4).
-          Input: amino acid sequence (up to 256 aa) → Output: ΔG kcal/mol.
+          <span className="font-semibold">ESM2-35M + LoRA (ΔG regressor)</span> — fine-tuned on ~3.3M small-domain
+          sequences (Rocklin/Tsuboyama mega-scale DMS + MGnify). Sequence → ΔG kcal/mol, more negative = more stable.
+          Validation Pearson 0.75 / Spearman 0.81. Reads the first 80 residues (small-domain training scope).
         </div>
       </div>
 
@@ -231,7 +239,7 @@ export default function NewPrediction() {
             {fastaInfo.truncWarning && (
               <div className="flex items-center gap-2 text-amber-700 text-xs bg-amber-50 border border-amber-200 rounded px-2 py-1.5">
                 <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
-                Sequence is &gt;256 aa — CNN will use the first 256 residues (model training limit).
+                Sequence is &gt;80 aa — the model reads the first 80 residues (small-domain training scope).
               </div>
             )}
           </div>
@@ -248,6 +256,44 @@ export default function NewPrediction() {
             className="text-sm text-blue-600 hover:text-blue-700 font-medium">
             Load sample (trypsin)
           </button>
+        </div>
+
+        {/* Stabilizing-mutation scan options */}
+        <div className="pt-4 border-t border-gray-100 space-y-4">
+          <h3 className="text-sm font-semibold text-gray-900">Stabilizing-mutation suggestions</h3>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="sm:col-span-2">
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                Residue selection <span className="text-gray-400 font-normal">(optional)</span>
+              </label>
+              <input
+                type="text"
+                value={residueSelection}
+                onChange={e => setResidueSelection(e.target.value)}
+                placeholder="e.g. include 1-20, 25-100; exclude 20-25"
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              <p className="text-xs text-gray-400 mt-1">
+                Restrict the scan to specific residue positions. Leave blank to scan the whole sequence.
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                Number of suggestions
+              </label>
+              <input
+                type="number"
+                min={1}
+                max={2000}
+                value={topK}
+                onChange={e => setTopK(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+              <p className="text-xs text-gray-400 mt-1">Top-ranked mutations to return.</p>
+            </div>
+          </div>
         </div>
 
         <div className="flex justify-end pt-2 border-t border-gray-100">

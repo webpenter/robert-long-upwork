@@ -13,7 +13,7 @@ from scipy.stats import pearsonr, spearmanr
 
 from protstab_predict import load_model, predict_batch
 
-DATA = r"D:/19411306/dmsv4_filtered_train_splits.csv"
+DATA = r"D:/19411306/19411306/dmsv4_filtered_train_splits.csv"
 CKPT = "models/best_model.pt"
 N = int(sys.argv[1]) if len(sys.argv) > 1 else 2000
 

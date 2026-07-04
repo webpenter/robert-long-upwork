@@ -3,7 +3,7 @@ ESM2-35M + LoRA regression model for protein ΔG prediction.
 
 Reconstructs the architecture stored in best_model.pt (model_type=esm2_lora):
   - backbone : facebook/esm2_t12_35M_UR50D (EsmModel, 12 layers, hidden 480)
-  - adapters : LoRA r=8 on attention query/key/value
+  - adapters : LoRA r=16, alpha=32 on attention query/key/value
   - head     : LayerNorm(480) -> Linear(480,256) -> GELU -> Dropout -> Linear(256,64) -> GELU -> Linear(64,1)
   - pooling  : attention-masked mean pool over token embeddings
 
@@ -46,7 +46,7 @@ def _build_config() -> EsmConfig:
 
 
 class ESM2LoRARegressor(nn.Module):
-    def __init__(self, lora_r: int = 8, dropout: float = 0.3):
+    def __init__(self, lora_r: int = 16, dropout: float = 0.3):
         super().__init__()
         from peft import LoraConfig, get_peft_model
 

@@ -14,6 +14,7 @@ const candidateSchema = new mongoose.Schema({
   substitutedAa: { type: String },
   // Silver/Gold fields
   ddG: { type: Number },                     // kcal/mol, more negative = more stable
+  confidence: { type: Number },              // 0–1 confidence in the suggestion
   predictedStabilityChange: { type: Number }, // dTm in °C
   confidenceLow: { type: Number },
   confidenceHigh: { type: Number },
@@ -45,6 +46,11 @@ const predictionSchema = new mongoose.Schema({
   },
   constraints: { type: String },
   proposedMutations: [{ type: String }],
+
+  // Stabilizing-mutation scan options (Phase 0)
+  suggestTopK:      { type: Number, default: 50 },   // # of ranked suggestions to return
+  residueSelection: { type: String, default: '' },   // e.g. "include 1-20, 25-100; exclude 20-25"
+
   tier: {
     type: String,
     enum: ['BRONZE', 'SILVER', 'GOLD'],

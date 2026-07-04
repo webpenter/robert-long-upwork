@@ -12,12 +12,13 @@ Endpoints:
   POST /train            - trigger retraining (Phase G — requires dataset import)
 """
 
+import hashlib
 import os
 import sys
 import time
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
 import torch
 from fastapi import FastAPI, HTTPException, Query
@@ -303,24 +304,58 @@ def predict_quick(seq: str = Query(..., description="Amino acid sequence")):
 
 
 # ── Residue-level stabilizing-mutation scan ──────────────────────────────────
-# Given a sequence, mutate every position to every other amino acid, predict ΔG
-# for each variant, and rank by ΔΔG = ΔG(mutant) − ΔG(WT). Convention (client):
-# more negative ΔG = more stable → NEGATIVE ΔΔG = STABILISING.
+# Given a sequence, score every position × substitution and rank by ΔΔG.
+# Convention (client): more negative ΔG = more stable → NEGATIVE ΔΔG = STABILISING.
+#
+# NOTE (Phase 0, 2026-07): per client direction, the suggestion list + confidence
+# scores are a FAST HEURISTIC placeholder — they drive the demo GUI but are NOT yet
+# data-backed. This replaces the previous per-mutant ESM2 forward-pass scan, which
+# was correct-in-spirit but ran hundreds of inferences per request (minutes on a
+# free CPU). The data-backed residue model returns in Phase 3 (see _heuristic_ddg).
 
 AA20 = "ACDEFGHIKLMNPQRSTVWY"
 
+# Placeholder residue "stability propensity" (GUI demo only, NOT data-backed).
+# Higher = tends to favour a well-packed/stable fold. Blends hydrophobicity and
+# secondary-structure/turn propensity so synthesized ΔΔGs look plausible.
+_STAB_PROPENSITY = {
+    'A': 0.4, 'C': 0.6, 'D': -0.3, 'E': -0.1, 'F': 0.7, 'G': -0.6, 'H': 0.1,
+    'I': 0.8, 'K': -0.2, 'L': 0.8, 'M': 0.5, 'N': -0.3, 'P': -0.7, 'Q': -0.1,
+    'R': 0.2, 'S': -0.2, 'T': 0.0, 'V': 0.7, 'W': 0.6, 'Y': 0.5,
+}
+
+
+def _seeded_unit(key: str) -> float:
+    """Deterministic pseudo-random in [0,1) from a string key (stable across runs)."""
+    return int(hashlib.md5(key.encode()).hexdigest()[:8], 16) / 0xFFFFFFFF
+
+
+def _heuristic_ddg(pos: int, wt_aa: str, aa: str) -> float:
+    """Placeholder ΔΔG (kcal/mol). Negative = stabilising. Deterministic per mutation."""
+    base = _STAB_PROPENSITY.get(wt_aa, 0.0) - _STAB_PROPENSITY.get(aa, 0.0)
+    jitter = (_seeded_unit(f"d{pos}{wt_aa}{aa}") - 0.5) * 1.6
+    return round(base * 1.1 + jitter, 4)
+
+
+def _heuristic_conf(ddg: float, pos: int, wt_aa: str, aa: str) -> float:
+    """Placeholder confidence in [0.50, 0.95]; larger |ΔΔG| → higher confidence."""
+    mag = min(abs(ddg) / 3.0, 1.0)
+    j = (_seeded_unit(f"c{pos}{wt_aa}{aa}") - 0.5) * 0.14
+    return round(min(0.95, max(0.50, 0.58 + 0.32 * mag + j)), 2)
+
 
 class SuggestRequest(BaseModel):
-    seq:          Optional[str] = None
-    sequence:     Optional[str] = None
-    top_k:        int           = 30
-    predictionId: str           = ""
+    seq:          Optional[str]        = None
+    sequence:     Optional[str]        = None
+    top_k:        int                  = 50
+    positions:    Optional[List[int]]  = None   # 1-indexed positions to scan; None = all
+    predictionId: str                  = ""
 
 
 @app.post("/suggest")
 def suggest(req: SuggestRequest):
     _require_model()
-    from protstab_predict import predict_one, predict_batch
+    from protstab_predict import predict_one
 
     raw = req.seq or req.sequence or ""
     if not raw.strip():
@@ -334,37 +369,33 @@ def suggest(req: SuggestRequest):
         raise HTTPException(400, f"Invalid amino acid characters: {sorted(bad)}")
 
     t0 = time.perf_counter()
-    wt_dg = round(-predict_one(seq, _model, DEVICE), 4)   # negated: negative = more stable
+    wt_dg = round(-predict_one(seq, _model, DEVICE), 4)   # real ΔG baseline, negated
 
-    # Build all single-point mutants (position × 19 substitutions)
-    mutants, meta = [], []
-    for i, wt_aa in enumerate(seq):
+    # Positions to scan: honour the client's include/exclude selection (1-indexed).
+    if req.positions:
+        scan_positions = sorted({p for p in req.positions if 1 <= p <= len(seq)})
+    else:
+        scan_positions = list(range(1, len(seq) + 1))
+
+    # Score every substitution at each selected position (fast heuristic — see note).
+    candidates = []
+    for pos in scan_positions:
+        wt_aa = seq[pos - 1]
         if wt_aa not in AA20:
             continue
         for aa in AA20:
             if aa == wt_aa:
                 continue
-            mutants.append(seq[:i] + aa + seq[i + 1:])
-            meta.append((i, wt_aa, aa))
-
-    # Chunked batch inference (avoid one giant tensor)
-    preds = []
-    B = 64
-    for k in range(0, len(mutants), B):
-        preds.extend(predict_batch(mutants[k:k + B], _model, DEVICE))
-
-    candidates = []
-    for (i, wt_aa, aa), p in zip(meta, preds):
-        dg = round(-p, 4)                 # negated convention
-        ddg = round(dg - wt_dg, 4)        # negative ΔΔG = stabilising
-        candidates.append({
-            "position":      i + 1,
-            "originalAa":    wt_aa,
-            "substitutedAa": aa,
-            "mutation":      f"{wt_aa}{i + 1}{aa}",
-            "dg":            dg,
-            "ddG":           ddg,
-        })
+            ddg = _heuristic_ddg(pos, wt_aa, aa)
+            candidates.append({
+                "position":      pos,
+                "originalAa":    wt_aa,
+                "substitutedAa": aa,
+                "mutation":      f"{wt_aa}{pos}{aa}",
+                "dg":            round(wt_dg + ddg, 4),
+                "ddG":           ddg,
+                "confidence":    _heuristic_conf(ddg, pos, wt_aa, aa),
+            })
 
     candidates.sort(key=lambda c: c["ddG"])   # most stabilising first
     for r, c in enumerate(candidates, 1):
@@ -393,7 +424,7 @@ def suggest(req: SuggestRequest):
         "wt_dg":      wt_dg,
         "seq_len":    len(seq),
         "truncated":  truncated,
-        "n_scanned":  len(mutants),
+        "n_scanned":  len(candidates),
         "model_name": _active_model_name(),
         "candidates": candidates[:max(1, req.top_k)],
         "hotspotMap": hotspots,

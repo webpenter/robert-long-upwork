@@ -5,6 +5,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import NewPrediction from './pages/NewPrediction';
+import Predictions from './pages/Predictions';
 import Results from './pages/Results';
 import BatchResults from './pages/BatchResults';
 import Settings from './pages/Settings';
@@ -38,6 +39,7 @@ function AppRoutes() {
       <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
       <Route path="/dashboard" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
       <Route path="/predict" element={<ProtectedRoute><Layout><NewPrediction /></Layout></ProtectedRoute>} />
+      <Route path="/predictions" element={<ProtectedRoute><Layout><Predictions /></Layout></ProtectedRoute>} />
       <Route path="/results/:id" element={<ProtectedRoute><Layout><Results /></Layout></ProtectedRoute>} />
       <Route path="/results-batch" element={<ProtectedRoute><Layout><BatchResults /></Layout></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><Layout><Settings /></Layout></ProtectedRoute>} />

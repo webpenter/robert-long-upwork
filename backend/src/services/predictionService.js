@@ -46,6 +46,42 @@ function buildFallbackResult(seq) {
   };
 }
 
+// ── Residue-selection parser ─────────────────────────────────────────────────
+// Turns a free-text selection like "include 1-20, 25-100; exclude 20-25" into an
+// explicit sorted list of 1-indexed positions to scan. Returns null when nothing
+// is specified (→ scan the whole sequence). Bare ranges default to "include".
+
+function parseResidueSelection(text, seqLen) {
+  if (!text || !String(text).trim()) return null;
+
+  const include = [];
+  const exclude = [];
+  let mode = 'include';
+
+  for (let tok of String(text).replace(/[;\n]/g, ',').split(',')) {
+    tok = tok.trim().toLowerCase();
+    if (!tok) continue;
+    if (tok.startsWith('include')) { mode = 'include'; tok = tok.slice(7).trim(); }
+    else if (tok.startsWith('exclude')) { mode = 'exclude'; tok = tok.slice(7).trim(); }
+    if (!tok) continue;
+
+    const m = tok.match(/^(\d+)\s*-\s*(\d+)$/) || tok.match(/^(\d+)$/);
+    if (!m) continue;
+    const a = parseInt(m[1], 10);
+    const b = m[2] !== undefined ? parseInt(m[2], 10) : a;
+    (mode === 'include' ? include : exclude).push([Math.min(a, b), Math.max(a, b)]);
+  }
+
+  const positions = new Set();
+  const eachInRange = (a, b, fn) => { for (let p = Math.max(1, a); p <= Math.min(seqLen, b); p++) fn(p); };
+
+  if (include.length) include.forEach(([a, b]) => eachInRange(a, b, p => positions.add(p)));
+  else for (let p = 1; p <= seqLen; p++) positions.add(p);        // no include → all
+  exclude.forEach(([a, b]) => eachInRange(a, b, p => positions.delete(p)));
+
+  return [...positions].sort((x, y) => x - y);
+}
+
 // ── Main prediction runner ────────────────────────────────────────────────────
 
 async function runPrediction(predictionId) {
@@ -85,20 +121,27 @@ async function runPrediction(predictionId) {
       seq_len,
       truncated   = false,
       latency_ms  = 0,
-      model_name  = 'protstab_cnn_v0',
+      model_name  = 'esm2-lora',
     } = result;
 
     // ── Residue-level stabilizing-mutation scan (ΔΔG) ────────────────────────
     // Runs only when the ML service is available (the fallback can't scan).
-    // Long timeout: a full position×AA scan is many forward passes.
+    // Honours the user's residue selection + suggestion count.
     let candidates = [];
     let hotspotMap = [];
     if (usedMLService) {
       try {
+        const topK      = Math.max(1, Number(pred.suggestTopK) || 50);
+        const positions = parseResidueSelection(pred.residueSelection, seq_len);
         const scan = await postToMLService(
           '/suggest',
-          { sequence: seq, top_k: 30, predictionId: String(predictionId) },
-          300000,
+          {
+            sequence:     seq,
+            top_k:        topK,
+            ...(positions ? { positions } : {}),
+            predictionId: String(predictionId),
+          },
+          60000,
         );
         candidates = (scan.candidates || []).map(c => ({
           rank:          c.rank,
@@ -107,6 +150,7 @@ async function runPrediction(predictionId) {
           originalAa:    c.originalAa,
           substitutedAa: c.substitutedAa,
           ddG:           c.ddG,
+          confidence:    c.confidence,
         }));
         hotspotMap = (scan.hotspotMap || []).map(h => ({
           position:               h.position,
