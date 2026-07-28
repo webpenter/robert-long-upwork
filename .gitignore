@@ -45,3 +45,4 @@ ml-service/models/best_model_r8_backup.pt
 ml-service/models/best_model_esm2 (1).pt
 ml-service/models/best_model_esm2 .pt/
 ml-service/models/best_model_esm2_rezipped.pt
+ml-service/models/best_model_r16_backup.pt
