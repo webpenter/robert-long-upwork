@@ -1,8 +1,9 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Upload, CheckCircle2, AlertCircle, Loader2, Dna, Zap } from 'lucide-react';
-import { parseFASTA, parseMultiFASTA, validateSequence, extractFeatures } from '../services/mlService';
+import { Upload, CheckCircle2, AlertCircle, Loader2, Dna, Zap, Thermometer } from 'lucide-react';
+import { parseMultiFASTA, validateSequence, extractFeatures } from '../services/mlService';
 import { useApp } from '../context/AppContext';
+import api from '../services/apiClient';
 
 const SAMPLE_FASTA = `>sp|P00761|TRYP_PIG Trypsin OS=Sus scrofa OX=9823
 IVGGYTCGANTVPYQVSLNSGYHFCGGSLINSQWVVSAAHCYKSGIQVRLGEDNINVVEG
@@ -17,10 +18,20 @@ export default function NewPrediction() {
   const [progress, setProgress]     = useState(0);
   const [topK, setTopK]             = useState(50);
   const [residueSelection, setResidueSelection] = useState('');
+  const [temperature, setTemperature] = useState('37');
+  const [ph, setPh]                   = useState('7.0');
+  const [modelInfo, setModelInfo]     = useState(null);
 
   const fastaRef = useRef();
   const { addPrediction, addPredictionsBatch, pollPrediction } = useApp();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    api.get('/ml/info').then(setModelInfo).catch(() => setModelInfo(null));
+  }, []);
+
+  const maxLen = modelInfo?.max_len || 80;
+  const usesConditions = !!modelInfo?.usesConditions;
 
   const handleFastaChange = (value) => {
     setFasta(value);
@@ -51,7 +62,7 @@ export default function NewPrediction() {
         mw:       features.estimatedMW,
         charged:  features.chargedFraction,
         hydro:    features.avgHydrophobicity,
-        truncWarning: features.length > 80,
+        truncWarning: features.length > maxLen,
       });
     } else {
       setFastaInfo({ multi: true, count: records.length });
@@ -83,6 +94,10 @@ export default function NewPrediction() {
       return;
     }
 
+    const conditions = usesConditions
+      ? { temperature: Number(temperature) || 37, ph: Number(ph) || 7.0 }
+      : {};
+
     setRunning(true);
     setProgress(0);
     const interval = setInterval(() => setProgress(p => Math.min(p + 8, 85)), 200);
@@ -91,7 +106,7 @@ export default function NewPrediction() {
       if (records.length === 1) {
         const prediction = await addPrediction({
           fastaSequence:    fasta,
-          conditions:       {},
+          conditions,
           suggestTopK:      Number(topK) > 0 ? Number(topK) : 50,
           residueSelection: residueSelection.trim(),
         });
@@ -104,7 +119,7 @@ export default function NewPrediction() {
       } else {
         const created = await addPredictionsBatch({
           sequences:  records.map(r => ({ header: r.header, sequence: r.sequence })),
-          conditions: {},
+          conditions,
         });
         clearInterval(interval);
         setProgress(100);
@@ -131,7 +146,7 @@ export default function NewPrediction() {
             }
           </div>
           <h2 className="text-xl font-semibold text-gray-900 mb-2">
-            {progress < 100 ? 'Running ESM2-LoRA Prediction' : 'Analysis Complete'}
+            {progress < 100 ? 'Running Prediction' : 'Analysis Complete'}
           </h2>
           <p className="text-gray-500 text-sm mb-6">
             {progress < 40  ? 'Tokenizing sequence...' :
@@ -175,17 +190,32 @@ export default function NewPrediction() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Stability Prediction</h1>
         <p className="text-gray-500 text-sm mt-1">
-          Predict thermodynamic stability (ΔG kcal/mol) from protein sequence using an ESM2-LoRA model
+          Predict thermodynamic stability (ΔG kcal/mol) from protein sequence
+          {modelInfo?.name ? ` using ${modelInfo.name}` : ''}
         </p>
       </div>
 
       {/* Model info banner */}
-      <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 mb-5 text-sm">
-        <Zap className="w-4 h-4 text-blue-600 flex-shrink-0" />
-        <div className="text-blue-800">
-          <span className="font-semibold">ESM2-35M + LoRA (ΔG regressor)</span> — fine-tuned on ~3.3M small-domain
-          sequences (Rocklin/Tsuboyama mega-scale DMS + MGnify). Sequence → ΔG kcal/mol, more negative = more stable.
-          Validation Pearson 0.75 / Spearman 0.81. Reads the first 80 residues (small-domain training scope).
+      <div className={`flex items-center gap-3 border rounded-xl px-4 py-3 mb-5 text-sm ${
+        modelInfo?.phase?.includes('EXPERIMENTAL') ? 'bg-amber-50 border-amber-200' : 'bg-blue-50 border-blue-200'
+      }`}>
+        <Zap className={`w-4 h-4 flex-shrink-0 ${modelInfo?.phase?.includes('EXPERIMENTAL') ? 'text-amber-600' : 'text-blue-600'}`} />
+        <div className={modelInfo?.phase?.includes('EXPERIMENTAL') ? 'text-amber-800' : 'text-blue-800'}>
+          {modelInfo ? (
+            <>
+              <span className="font-semibold">{modelInfo.name}</span> — {modelInfo.architecture}.
+              {' '}Trained on {modelInfo.training_data}.
+              {modelInfo.val_metrics && (
+                <> Validation Pearson {modelInfo.val_metrics.pearson_r?.toFixed(2)} / Spearman {modelInfo.val_metrics.spearman_rho?.toFixed(2)}.</>
+              )}
+              {' '}Reads the first {modelInfo.max_len} residues.
+              {modelInfo.phase?.includes('EXPERIMENTAL') && (
+                <> <strong>Experimental model — not yet fully verified; outputs may be inconsistent.</strong></>
+              )}
+            </>
+          ) : (
+            'Loading model info…'
+          )}
         </div>
       </div>
 
@@ -239,7 +269,7 @@ export default function NewPrediction() {
             {fastaInfo.truncWarning && (
               <div className="flex items-center gap-2 text-amber-700 text-xs bg-amber-50 border border-amber-200 rounded px-2 py-1.5">
                 <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
-                Sequence is &gt;80 aa — the model reads the first 80 residues (small-domain training scope).
+                Sequence is &gt;{maxLen} aa — the model reads only the first {maxLen} residues.
               </div>
             )}
           </div>
@@ -257,6 +287,39 @@ export default function NewPrediction() {
             Load sample (trypsin)
           </button>
         </div>
+
+        {/* Assay conditions — only meaningful for a conditions-aware model */}
+        {usesConditions && (
+          <div className="pt-4 border-t border-gray-100 space-y-4">
+            <div className="flex items-center gap-2">
+              <Thermometer className="w-4 h-4 text-gray-500" />
+              <h3 className="text-sm font-semibold text-gray-900">Assay conditions</h3>
+            </div>
+            <div className="grid grid-cols-2 gap-4 max-w-sm">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Temperature (°C)</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={temperature}
+                  onChange={e => setTemperature(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">pH</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={ph}
+                  onChange={e => setPh(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+            <p className="text-xs text-gray-400">This model conditions its prediction on assay temperature and pH.</p>
+          </div>
+        )}
 
         {/* Stabilizing-mutation scan options */}
         <div className="pt-4 border-t border-gray-100 space-y-4">

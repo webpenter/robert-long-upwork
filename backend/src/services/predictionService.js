@@ -107,6 +107,7 @@ async function runPrediction(predictionId) {
     try {
       result = await postToMLService('/predict', {
         sequence:     seq,
+        conditions:   pred.conditions || {},
         predictionId: String(predictionId),
       });
       usedMLService = true;
@@ -139,6 +140,7 @@ async function runPrediction(predictionId) {
             sequence:     seq,
             top_k:        topK,
             ...(positions ? { positions } : {}),
+            conditions:   pred.conditions || {},
             predictionId: String(predictionId),
           },
           60000,

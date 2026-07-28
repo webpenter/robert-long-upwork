@@ -218,6 +218,8 @@ def model_info():
                              "q/k/v/dense, masked-mean pool → Linear(640→64) gated by "
                              "temperature/pH → MLP(64→32→1)",
             "parameters":    _model.count_parameters(),
+            "max_len":       _active_max_aa(),
+            "usesConditions": True,
             "input":         f"tokenized protein sequence (first {_active_max_aa()} aa, "
                              "UNCONFIRMED truncation length) + temperature/pH conditions",
             "output":        "ΔG (kcal/mol) — more negative = more stable (platform convention)",
@@ -234,6 +236,8 @@ def model_info():
             "architecture":  "ESM2-35M (facebook/esm2_t12_35M_UR50D) + LoRA r=16 on q/k/v, "
                              "masked-mean pool → LayerNorm → MLP(480→256→64→1)",
             "parameters":    _model.count_parameters(),       # trainable (LoRA + head)
+            "max_len":       _active_max_aa(),
+            "usesConditions": False,
             "input":         "tokenized protein sequence, first 80 aa (small-domain scope)",
             "output":        "ΔG (kcal/mol) — more negative = more stable (platform convention)",
             "training_data": "~3.3M small-domain sequences (DMSv4/v5/v7 + Megascale DMS + MGnify)",
@@ -246,6 +250,8 @@ def model_info():
         "model_type":    "cnn",
         "architecture":  "1D CNN — 3 ConvBlocks (21→64→128→256, k=5/5/3) + GlobalAvgPool + MLP(256→128→32→1)",
         "parameters":    _model.count_parameters(),
+        "max_len":       _active_max_aa(),
+        "usesConditions": False,
         "input":         "one-hot protein sequence, max 256 aa",
         "output":        "ΔG (kcal/mol) — positive = stable, negative = unstable",
         "training_data": "DMSv4 filtered (455,589 sequences)",
@@ -392,6 +398,7 @@ class SuggestRequest(BaseModel):
     sequence:     Optional[str]        = None
     top_k:        int                  = 50
     positions:    Optional[List[int]]  = None   # 1-indexed positions to scan; None = all
+    conditions:   dict                 = {}     # only used by the esm2_gated model
     predictionId: str                  = ""
 
 
@@ -412,7 +419,7 @@ def suggest(req: SuggestRequest):
         raise HTTPException(400, f"Invalid amino acid characters: {sorted(bad)}")
 
     t0 = time.perf_counter()
-    wt_dg = round(-predict_one(seq, _model, DEVICE), 4)   # real ΔG baseline, negated
+    wt_dg = round(-predict_one(seq, _model, DEVICE, conditions=req.conditions), 4)   # real ΔG baseline, negated
 
     # Positions to scan: honour the client's include/exclude selection (1-indexed).
     if req.positions:
