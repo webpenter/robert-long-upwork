@@ -28,12 +28,26 @@ from pydantic import BaseModel
 # ── Config ────────────────────────────────────────────────────────────────────
 
 MODELS_DIR     = Path(__file__).parent / "models"
-CHECKPOINT     = MODELS_DIR / "best_model.pt"
+# ML_CHECKPOINT_PATH lets a specific checkpoint (e.g. the experimental gated
+# model) be loaded for local testing without touching the deployed default.
+CHECKPOINT     = Path(os.environ.get("ML_CHECKPOINT_PATH") or (MODELS_DIR / "best_model.pt"))
 DEVICE         = "cuda" if torch.cuda.is_available() else "cpu"
 VALID_AAS      = set("ACDEFGHIKLMNPQRSTVWYX")
 
-_model = None    # loaded at startup
-_meta  = {}      # checkpoint metadata (model_type, model_name, val_metrics)
+_model  = None   # loaded at startup
+_meta   = {}     # checkpoint metadata (model_type, model_name, val_metrics)
+_family = "cnn"  # 'cnn' | 'esm2_lora' | 'esm2_gated' — see protstab_predict._detect_family
+
+
+_SCALAR_VAL_METRIC_KEYS = ("mae", "rmse", "pearson_r", "spearman_rho", "accuracy")
+
+
+def _clean_val_metrics(val_metrics):
+    """Drop non-scalar entries (e.g. raw preds/targets arrays some checkpoints
+    embed) that aren't JSON-serializable and are too large to return anyway."""
+    if not isinstance(val_metrics, dict):
+        return val_metrics
+    return {k: v for k, v in val_metrics.items() if k in _SCALAR_VAL_METRIC_KEYS}
 
 
 def _read_meta() -> dict:
@@ -41,7 +55,10 @@ def _read_meta() -> dict:
     try:
         ckpt = torch.load(str(CHECKPOINT), map_location="cpu", weights_only=False)
         if isinstance(ckpt, dict):
-            return {k: ckpt[k] for k in ("model_type", "model_name", "epoch", "val_metrics") if k in ckpt}
+            meta = {k: ckpt[k] for k in ("model_type", "model_name", "epoch", "val_metrics") if k in ckpt}
+            if "val_metrics" in meta:
+                meta["val_metrics"] = _clean_val_metrics(meta["val_metrics"])
+            return meta
     except Exception:
         pass
     return {}
@@ -49,7 +66,9 @@ def _read_meta() -> dict:
 
 def _active_model_name() -> str:
     """Real name of the loaded model — stored by the backend as modelVersion."""
-    if _meta.get("model_type") == "esm2_lora":
+    if _family == "esm2_gated":
+        return _meta.get("model_name", "esm2_t30_150M_lora_gated")
+    if _family == "esm2_lora":
         return _meta.get("model_name", "esm2_t12_35M_lora")
     return "protstab_cnn_v0"
 
@@ -58,12 +77,15 @@ def _active_model_name() -> str:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global _model, _meta
+    global _model, _meta, _family
     try:
-        from protstab_predict import load_model
+        from protstab_predict import load_model, _detect_family
         _meta  = _read_meta()
+        ckpt_for_detect = torch.load(str(CHECKPOINT), map_location="cpu", weights_only=False)
+        _family = _detect_family(ckpt_for_detect)
+        del ckpt_for_detect
         _model = load_model(str(CHECKPOINT), DEVICE)
-        kind = _meta.get("model_type", "cnn")
+        kind = _family
         print(f"[ml-service] Model loaded        : {_model.__class__.__name__} ({kind})")
         print(f"[ml-service] Checkpoint          : {CHECKPOINT}")
         print(f"[ml-service] Device              : {DEVICE}")
@@ -145,8 +167,12 @@ class BatchResponse(BaseModel):
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _active_max_aa() -> int:
-    """Residue cap of the loaded model. ESM2-LoRA was trained at 80 aa; CNN uses 256."""
-    if _meta.get("model_type") == "esm2_lora":
+    """Residue cap of the loaded model. ESM2-LoRA r16 was trained at 80 aa;
+    ESM2-gated r32 placeholder is 512 (UNCONFIRMED, see esm2_gated_model.py); CNN uses 256."""
+    if _family == "esm2_gated":
+        from esm2_gated_model import MAX_LEN as GATED_MAX
+        return GATED_MAX
+    if _family == "esm2_lora":
         from esm2_lora_model import MAX_LEN as ESM2_MAX
         return ESM2_MAX
     from protstab_model import MAX_LEN as CNN_MAX
@@ -184,8 +210,24 @@ def health():
 @app.get("/model/info")
 def model_info():
     _require_model()
-    is_esm2 = _meta.get("model_type") == "esm2_lora"
-    if is_esm2:
+    if _family == "esm2_gated":
+        return {
+            "name":          _meta.get("model_name", "esm2_t30_150M_lora_gated"),
+            "model_type":    "esm2_gated",
+            "architecture":  "ESM2-150M (facebook/esm2_t30_150M_UR50D) + LoRA r=32 on "
+                             "q/k/v/dense, masked-mean pool → Linear(640→64) gated by "
+                             "temperature/pH → MLP(64→32→1)",
+            "parameters":    _model.count_parameters(),
+            "input":         f"tokenized protein sequence (first {_active_max_aa()} aa, "
+                             "UNCONFIRMED truncation length) + temperature/pH conditions",
+            "output":        "ΔG (kcal/mol) — more negative = more stable (platform convention)",
+            "training_data": "author-supplied (not yet documented in this repo)",
+            "val_metrics":   _meta.get("val_metrics"),
+            "epoch":         _meta.get("epoch"),
+            "phase":         "EXPERIMENTAL — env-conditioned model, not yet verified "
+                             "(see esm2_gated_model.py for open questions)",
+        }
+    if _family == "esm2_lora":
         return {
             "name":          _meta.get("model_name", "esm2_t12_35M_lora"),
             "model_type":    "esm2_lora",
@@ -232,8 +274,9 @@ def predict(req: PredictRequest):
     # Client convention: NEGATIVE ΔG = more stable. The model is trained on dmsv4
     # `deltaG` (positive = more stable), so we negate at the API boundary so every
     # downstream consumer (DB, CSV, dashboard, chat) is consistent. Displayed ΔG
-    # therefore equals -(dmsv4 deltaG).
-    dg  = round(-predict_one(seq, _model, DEVICE), 4)
+    # therefore equals -(dmsv4 deltaG). Assumed to also hold for esm2_gated —
+    # unverified, see esm2_gated_model.py.
+    dg  = round(-predict_one(seq, _model, DEVICE, conditions=req.conditions), 4)
     ms  = round((time.perf_counter() - t0) * 1000, 2)
 
     return PredictResponse(
