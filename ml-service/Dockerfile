@@ -34,5 +34,6 @@ RUN HF_HUB_OFFLINE=0 TRANSFORMERS_OFFLINE=0 \
 COPY . .
 
 # HF Spaces (Docker) expects the app on port 7860 (see README app_port).
+# Render (and other hosts) inject their own $PORT — fall back to 7860 when unset.
 EXPOSE 7860
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "7860"]
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-7860}"]

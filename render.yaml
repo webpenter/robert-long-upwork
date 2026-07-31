@@ -27,3 +27,14 @@ services:
       # Public URL of the deployed frontend (Vercel), e.g. https://enzyme-ml.vercel.app
       - key: FRONTEND_URL
         sync: false
+
+  # ML inference service (FastAPI + PyTorch), as a free-tier alternative to a
+  # Hugging Face Space. Note: the free plan's 512MB RAM may not be enough for
+  # the ESM2-150M gated model — watch the deploy logs for an OOM on first boot.
+  - type: web
+    name: enzyme-ml-service
+    runtime: docker
+    plan: free
+    rootDir: ml-service
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /health
