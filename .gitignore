@@ -46,3 +46,6 @@ ml-service/models/best_model_esm2 (1).pt
 ml-service/models/best_model_esm2 .pt/
 ml-service/models/best_model_esm2_rezipped.pt
 ml-service/models/best_model_r16_backup.pt
+ml-service/models/best_model_epoch3_backup.pt
+ml-service/models/updated-best_model_esm2/
+ml-service/models/updated_best_model_esm2_rezipped.pt
