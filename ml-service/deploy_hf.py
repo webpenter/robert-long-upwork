@@ -62,19 +62,37 @@ def main():
         private=private, exist_ok=True,
     )
 
-    print("[deploy] uploading ml-service (model uploads via LFS, ~130MB — be patient)…")
+    # Ship exactly one checkpoint. Everything else under models/ is a local backup
+    # or an experiment, and together they run to several gigabytes. Enumerated from
+    # disk rather than blacklisted by name: the folder has names with spaces and
+    # parentheses, and a pattern list silently misses whatever it did not predict.
+    ignore = [
+        "__pycache__/*", "*.pyc", ".git/*", "*.rar", "eval_dmsv4.py", "deploy_hf.py",
+    ]
+    models_dir = os.path.join(here, "models")
+    skipped_bytes = 0
+    for entry in sorted(os.listdir(models_dir)):
+        if entry == "best_model.pt":
+            continue
+        full = os.path.join(models_dir, entry)
+        if os.path.isdir(full):
+            ignore.append(f"models/{entry}/*")
+            skipped_bytes += sum(
+                os.path.getsize(os.path.join(root, f))
+                for root, _, files in os.walk(full) for f in files
+            )
+        elif entry.endswith(".pt"):
+            ignore.append(f"models/{entry}")
+            skipped_bytes += os.path.getsize(full)
+
+    served = os.path.getsize(os.path.join(models_dir, "best_model.pt")) / 1e6
+    print(f"[deploy] excluding {len(ignore) - 6} local checkpoint(s), {skipped_bytes / 1e9:.2f} GB")
+    print(f"[deploy] uploading ml-service (best_model.pt is {served:.0f}MB via LFS — be patient)…")
     api.upload_folder(
         folder_path=here,
         repo_id=repo_id,
         repo_type="space",
-        ignore_patterns=[
-            "__pycache__/*", "*.pyc", ".git/*", "*.rar", "eval_dmsv4.py", "deploy_hf.py",
-            # Only best_model.pt is served. Everything else in models/ is a local
-            # backup or a candidate checkpoint, and each is roughly 640MB — shipping
-            # them would add gigabytes to the Space for no benefit.
-            "models/*backup*.pt", "models/new-updated-*.pt", "models/best_model_esm2*.pt",
-            "models/best_model_r*.pt",
-        ],
+        ignore_patterns=ignore,
         commit_message="Deploy hsFAST ML service",
     )
 
