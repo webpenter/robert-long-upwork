@@ -1,5 +1,5 @@
 # hsFAST ML service — Hugging Face Space (Docker SDK)
-# Serves the ESM2-35M + LoRA ΔG model (models/best_model.pt) via FastAPI.
+# Serves the ESM2-150M gated ΔG model (models/best_model.pt) via FastAPI.
 FROM python:3.11-slim
 
 ENV PYTHONUNBUFFERED=1 \
@@ -23,10 +23,16 @@ RUN pip install --upgrade pip && \
     pip install -r requirements.txt
 
 # The model bundles the ESM2 weights, but the tokenizer is still fetched from
-# the Hub. esm2_lora_model.py forces TRANSFORMERS_OFFLINE=1 at runtime, so we
+# the Hub. esm2_gated_model.py forces TRANSFORMERS_OFFLINE=1 at runtime, so we
 # must pre-download & cache the tokenizer now (with offline mode OFF) or the
 # first prediction will crash. Cache is made world-readable for the runtime
 # user (HF Spaces run the container as UID 1000, not root).
+#
+# The 35M tokenizer below is DELIBERATE, not a leftover from the older model:
+# every ESM2 checkpoint shares the same UR50D vocabulary, so the small one is
+# byte-for-byte equivalent for tokenising and far quicker to fetch. It is what
+# esm2_gated_model.py falls back to when the 150M tokenizer is not cached.
+# Do not "fix" it to the 150M name.
 RUN HF_HUB_OFFLINE=0 TRANSFORMERS_OFFLINE=0 \
     python -c "from transformers import AutoTokenizer; AutoTokenizer.from_pretrained('facebook/esm2_t12_35M_UR50D')" && \
     chmod -R 777 /app/.hfcache

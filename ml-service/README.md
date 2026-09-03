@@ -10,8 +10,12 @@ pinned: false
 
 # hsFAST ML Service
 
-FastAPI service serving the ESM2-35M + LoRA protein stability (ΔG) model for the
+FastAPI service serving the ESM2-150M gated protein stability (ΔG) model for the
 Enzyme Stability ML Prediction Platform.
+
+The current checkpoint is `expert1_region_aware` — an ESM2-150M backbone with
+LoRA adapters and an environment-conditioning gate, trained with region-weighted
+loss on designed mini-proteins of 40–80 residues.
 
 This is the **ML inference backend** only — it is called server-to-server by the
 Node/Express API, not directly by the browser.
@@ -26,6 +30,12 @@ Node/Express API, not directly by the browser.
 
 ## Notes
 - The ESM2 weights are bundled in `models/best_model.pt` (Git LFS).
+- Responses carry `in_distribution` and `flags`. The model was trained on
+  domains of 40–80 residues with labels spanning roughly −6.2 to +9.8 kcal/mol
+  (raw orientation), so anything longer, or outside that range, is extrapolation
+  and is marked as such rather than returned with the same confidence.
+- Ranking is more reliable than the absolute ΔG value. Prefer ordering
+  sequences over reading the number.
 - The tokenizer is pre-cached at build time (see `Dockerfile`) so runtime
   offline mode works.
 - First request after the Space wakes from sleep takes ~30–60 s (model load).

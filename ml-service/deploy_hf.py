@@ -27,18 +27,40 @@ from huggingface_hub import HfApi
 
 
 def main():
-    if len(sys.argv) < 2:
-        sys.exit("Usage: HF_TOKEN=<write-token> python deploy_hf.py <hf-username>/<space-name>")
-    repo_id = sys.argv[1]
-    token = os.environ.get("HF_TOKEN")
-    if not token:
-        sys.exit("Set HF_TOKEN to a Hugging Face WRITE token (https://huggingface.co/settings/tokens)")
+    flags = [a for a in sys.argv[1:] if a.startswith("--")]
+    positional = [a for a in sys.argv[1:] if not a.startswith("--")]
+    if not positional:
+        sys.exit(
+            "Usage: python deploy_hf.py <hf-username>/<space-name> [--private]\n"
+            "Authenticate first with `huggingface-cli login`, or set HF_TOKEN."
+        )
+    repo_id = positional[0]
+    private = "--private" in flags
+
+    # HF_TOKEN wins when set; otherwise fall back to whatever `huggingface-cli
+    # login` cached. Passing token=None makes HfApi resolve the stored
+    # credential, which keeps the token out of shell history and transcripts.
+    api = HfApi(token=os.environ.get("HF_TOKEN"))
+    try:
+        who = api.whoami()
+    except Exception:
+        sys.exit(
+            "No Hugging Face credentials found. Either run `huggingface-cli login` "
+            "once, or set HF_TOKEN to a WRITE token "
+            "(https://huggingface.co/settings/tokens)."
+        )
+    print(f"[deploy] authenticated as {who.get('name')}")
 
     here = os.path.dirname(os.path.abspath(__file__))
-    api = HfApi(token=token)
 
-    print(f"[deploy] creating/locating Space '{repo_id}' (Docker SDK)…")
-    api.create_repo(repo_id=repo_id, repo_type="space", space_sdk="docker", exist_ok=True)
+    # exist_ok=True means an existing Space keeps whatever visibility it already
+    # has — `private` only takes effect when the Space is created here. Changing
+    # an existing Space is done in its Settings page, not from this script.
+    print(f"[deploy] creating/locating Space '{repo_id}' (Docker SDK, private={private})…")
+    api.create_repo(
+        repo_id=repo_id, repo_type="space", space_sdk="docker",
+        private=private, exist_ok=True,
+    )
 
     print("[deploy] uploading ml-service (model uploads via LFS, ~130MB — be patient)…")
     api.upload_folder(
