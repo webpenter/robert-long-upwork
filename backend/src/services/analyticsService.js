@@ -374,4 +374,32 @@ async function runGrubbsTest(experimentId) {
   return flagged;
 }
 
-module.exports = { computeHalfLives, normalizeToReference, computeApparentTm, fitSigmoid, grubbsTest, runGrubbsTest };
+// ── Fit-quality gate for rankings ─────────────────────────────────────────────
+// A well whose signal never decays fits with k ~ 0, and t½ = ln2/k explodes — so
+// the *worst* fits produce the *largest* half-lives and hijack any "best variant"
+// ranking (a flat negative control was ranking first at 12,994 min against a true
+// best of ~24 min). Metrics are still computed and stored for every well; this
+// only decides what is eligible to be called best.
+//
+// Thresholds match the qcFlags already raised in computeHalfLives/computeApparentTm.
+const MIN_R2 = { half_life: 0.8, apparent_tm: 0.85 };
+
+/** True if this derived metric is trustworthy enough to rank on. */
+function isRankable(metric) {
+  if (!metric || metric.value == null) return false;
+  const floor = MIN_R2[metric.metricType];
+  if (floor == null) return true;                 // fold_change has no fit to judge
+  return metric.goodnessOfFit != null && metric.goodnessOfFit >= floor;
+}
+
+/** Pick a measurement's derived metric, or undefined when it fails the fit gate. */
+function rankableMetric(measurement, metricType) {
+  const m = (measurement.derivedMetrics || []).find(d => d.metricType === metricType);
+  return isRankable(m) ? m : undefined;
+}
+
+module.exports = {
+  computeHalfLives, normalizeToReference, computeApparentTm,
+  fitSigmoid, grubbsTest, runGrubbsTest,
+  MIN_R2, isRankable, rankableMetric,
+};

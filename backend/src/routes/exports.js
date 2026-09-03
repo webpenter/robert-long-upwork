@@ -4,6 +4,7 @@ const PDFDoc   = require('pdfkit');
 const Experiment  = require('../models/Experiment');
 const Measurement = require('../models/Measurement');
 const { authenticate } = require('../middleware/auth');
+const { rankableMetric, isRankable } = require('../services/analyticsService');
 
 const router = express.Router();
 router.use(authenticate);
@@ -76,11 +77,13 @@ router.get('/experiment/:id/pdf', async (req, res, next) => {
     const poorFit   = measurements.filter(m => m.qcFlags?.includes('poor_fit'));
 
     // Top 10 by half-life
+    // Fit gate: only wells whose decay fit passed R2 are eligible for the ranking,
+    // otherwise a flat trace (k ~ 0 -> huge t-half) is reported as the best variant.
     const withHL = measurements
       .map(m => {
-        const hl = m.derivedMetrics?.find(d => d.metricType === 'half_life');
-        const fc = m.derivedMetrics?.find(d => d.metricType === 'fold_change');
-        const tm = m.derivedMetrics?.find(d => d.metricType === 'apparent_tm');
+        const hl = rankableMetric(m, 'half_life');
+        const fc = rankableMetric(m, 'fold_change');
+        const tm = rankableMetric(m, 'apparent_tm');
         return hl ? {
           name:       m.variant?.name || m.replicateGroup?.replace(/_R\d+$/, '') || m.sampleId || m.sampleType,
           halfLife:   hl.value,
@@ -95,10 +98,10 @@ router.get('/experiment/:id/pdf', async (req, res, next) => {
       .slice(0, 10);
 
     const folds = measurements.flatMap(m =>
-      (m.derivedMetrics || []).filter(d => d.metricType === 'fold_change').map(d => d.value)
+      (m.derivedMetrics || []).filter(d => d.metricType === 'fold_change' && isRankable(d)).map(d => d.value)
     ).filter(v => v != null);
     const tms = measurements.flatMap(m =>
-      (m.derivedMetrics || []).filter(d => d.metricType === 'apparent_tm').map(d => d.value)
+      (m.derivedMetrics || []).filter(d => d.metricType === 'apparent_tm' && isRankable(d)).map(d => d.value)
     ).filter(v => v != null);
 
     const bestHL = withHL[0] ?? null;

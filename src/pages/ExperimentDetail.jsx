@@ -226,11 +226,24 @@ function buildEndpointData(measurements) {
 // Returns one row per sample with mean, standard error, n, sampleType, mutation.
 // This is what fixes the "one bar per replicate / duplicated values" bug: each
 // sample appears exactly once, plotted as the replicate mean with an SE error bar.
+// Goodness-of-fit floors, mirroring the backend gate in analyticsService.js.
+// A well whose signal never decays fits with k ~ 0, so t-half = ln2/k explodes and
+// the WORST fits produce the LARGEST half-lives. Every metric is still shown in the
+// measurement table; these thresholds only decide what may be ranked or called best.
+const MIN_R2 = { half_life: 0.8, apparent_tm: 0.85 };
+
+function isRankable(metric) {
+  if (!metric || metric.value == null) return false;
+  const floor = MIN_R2[metric.metricType];
+  if (floor == null) return true;                 // fold_change has no fit to judge
+  return metric.goodnessOfFit != null && metric.goodnessOfFit >= floor;
+}
+
 function groupMetricBySample(measurements, metricType) {
   const groups = {};
   for (const m of measurements) {
     const d = m.derivedMetrics?.find(x => x.metricType === metricType);
-    if (!d || d.value == null) continue;
+    if (!isRankable(d)) continue;
     const base = m.replicateGroup?.replace(/_R\d+$/, '') || m.sampleId || m.sampleType;
     if (!groups[base]) {
       groups[base] = {
@@ -271,6 +284,8 @@ export default function ExperimentDetail() {
   const [activeTab, setActiveTab] = useState('chart');
   const hasWellData = useMemo(() => measurements.some(m => m.wellPosition && parseWell(m.wellPosition)), [measurements]);
   const [analyticsRunning, setAnalyticsRunning] = useState(false);
+  const [pdfBusy, setPdfBusy] = useState(false);
+  const [pdfError, setPdfError] = useState('');
   const [analyticsResult, setAnalyticsResult] = useState(null);
 
   // Inline upload state
@@ -377,12 +392,19 @@ export default function ExperimentDetail() {
   const endpointData = useMemo(() => buildEndpointData(measurements), [measurements]);
   const hasChart = kinetic || endpointData.length > 0;
 
-  // Half-life rankings from computed derivedMetrics
+  // How many half-life fits were computed but are too poor to rank on.
+  const poorFitCount = useMemo(() => measurements.filter(m => {
+    const hl = m.derivedMetrics?.find(d => d.metricType === 'half_life');
+    return hl?.value != null && !isRankable(hl);
+  }).length, [measurements]);
+
+  // Half-life rankings from computed derivedMetrics — fits below the R2 floor are
+  // excluded so a non-decaying well cannot be presented as the best sample.
   const halfLifeRanking = useMemo(() => {
     return measurements
       .map(m => {
         const hl = m.derivedMetrics?.find(d => d.metricType === 'half_life');
-        if (!hl) return null;
+        if (!isRankable(hl)) return null;
         return {
           label: m.variant?.name || m.replicateGroup?.split('_R')[0] || m.sampleType,
           halfLife: hl.value,
@@ -490,6 +512,37 @@ export default function ExperimentDetail() {
     { label: 'Excluded', value: measurements.filter(m => m.excluded).length, icon: AlertCircle, bg: 'bg-red-50', color: 'text-red-500' },
   ];
 
+  // The export endpoint is JWT-protected, so a plain <a href> (which sends no
+  // Authorization header) came back as 401 JSON instead of a PDF. Fetch it with
+  // the token attached and hand the browser a blob instead.
+  const downloadPdf = async () => {
+    setPdfBusy(true);
+    setPdfError('');
+    try {
+      const { access } = api.getTokens();
+      const base = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
+      const res = await fetch(`${base}/exports/experiment/${id}/pdf`, {
+        headers: access ? { Authorization: `Bearer ${access}` } : {},
+      });
+      if (!res.ok) {
+        let msg = `Report failed (${res.status})`;
+        try { msg = (await res.json()).error || msg; } catch { /* non-JSON body */ }
+        throw new Error(msg);
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `experiment_${id}_report.pdf`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setPdfError(err.message);
+    } finally {
+      setPdfBusy(false);
+    }
+  };
+
   const exportCSV = () => {
     const headers = ['Well', 'Sample_ID', 'Sample_Type', 'Replicate_Group', 'Fluorescence_RFU', 'QC'];
     const rows = measurements.map(m => [
@@ -530,6 +583,12 @@ export default function ExperimentDetail() {
             {experiment.notes && <p className="text-gray-500 text-sm">{experiment.notes}</p>}
           </div>
           <div className="flex items-center gap-2 flex-wrap">
+            {pdfError && (
+              <span className="flex items-center gap-1 text-xs text-red-600 font-medium">
+                <AlertCircle className="w-3.5 h-3.5" />
+                {pdfError}
+              </span>
+            )}
             {analyticsResult && (
               <span className="flex items-center gap-1 text-xs text-green-600 font-medium">
                 <CheckCircle2 className="w-3.5 h-3.5" />
@@ -552,12 +611,11 @@ export default function ExperimentDetail() {
                 Compare
               </button>
             )}
-            <a href={`${import.meta.env.VITE_API_URL || 'http://localhost:4000/api'}/exports/experiment/${id}/pdf`}
-              target="_blank" rel="noreferrer"
-              className="flex items-center gap-2 px-3 py-1.5 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition-colors">
-              <FileText className="w-4 h-4" />
-              PDF Report
-            </a>
+            <button onClick={downloadPdf} disabled={pdfBusy}
+              className="flex items-center gap-2 px-3 py-1.5 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors">
+              {pdfBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+              {pdfBusy ? 'Building…' : 'PDF Report'}
+            </button>
             <button onClick={exportCSV}
               className="flex items-center gap-2 px-3 py-1.5 border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition-colors">
               <Download className="w-4 h-4" />
@@ -768,7 +826,15 @@ export default function ExperimentDetail() {
                   {halfLifeRanking.length > 0 && (
                     <div className="mt-5">
                       <div className="flex items-center justify-between mb-3">
-                        <h4 className="text-sm font-semibold text-gray-700">Half-life ranking (top {halfLifeRanking.length})</h4>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h4 className="text-sm font-semibold text-gray-700">Half-life ranking (top {halfLifeRanking.length})</h4>
+                          {poorFitCount > 0 && (
+                            <span className="text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full font-medium"
+                              title={`These wells produced a half-life value, but their exponential fit is below R2 ${MIN_R2.half_life}. They stay in the measurement table but are not ranked.`}>
+                              {poorFitCount} poor fit{poorFitCount !== 1 ? 's' : ''} excluded
+                            </span>
+                          )}
+                        </div>
                         <span className="text-xs text-gray-400">Click a row to overlay replicates</span>
                       </div>
                       <div className="overflow-x-auto">

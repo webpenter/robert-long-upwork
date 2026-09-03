@@ -36,14 +36,29 @@ function groupBySample(measurements) {
   return groups;
 }
 
+// Goodness-of-fit floors, mirroring the backend gate in analyticsService.js.
+// Without this a flat, non-decaying well fits with k ~ 0 and its t-half = ln2/k
+// explodes, so the worst fits would sort to the top of the comparison table.
+const MIN_R2 = { half_life: 0.8, apparent_tm: 0.85 };
+
+function isRankable(metric) {
+  if (!metric || metric.value == null) return false;
+  const floor = MIN_R2[metric.metricType];
+  if (floor == null) return true;
+  return metric.goodnessOfFit != null && metric.goodnessOfFit >= floor;
+}
+
 // Aggregate metrics across replicates for a sample group
 function aggregateMetrics(ms) {
   const halves = [], folds = [], tms = [], r2s = [];
+  let excluded = 0;
   for (const m of ms) {
     for (const d of m.derivedMetrics || []) {
-      if (d.metricType === 'half_life'   && d.value != null) { halves.push(d.value); if (d.goodnessOfFit != null) r2s.push(d.goodnessOfFit); }
-      if (d.metricType === 'fold_change'  && d.value != null) folds.push(d.value);
-      if (d.metricType === 'apparent_tm'  && d.value != null) tms.push(d.value);
+      if (d.value == null) continue;
+      if (!isRankable(d)) { excluded++; continue; }
+      if (d.metricType === 'half_life')   { halves.push(d.value); if (d.goodnessOfFit != null) r2s.push(d.goodnessOfFit); }
+      if (d.metricType === 'fold_change') folds.push(d.value);
+      if (d.metricType === 'apparent_tm') tms.push(d.value);
     }
   }
   const avg  = arr => arr.length ? parseFloat((arr.reduce((a, b) => a + b, 0) / arr.length).toFixed(3)) : null;
@@ -55,6 +70,7 @@ function aggregateMetrics(ms) {
     foldChange: avg(folds),
     r2:         avg(r2s),
     n:          ms.length,
+    excluded,
   };
 }
 
