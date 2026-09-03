@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import api from '../services/apiClient';
+import { OutOfRangeBadge, OutOfRangeNotice, HeuristicNotice, ModelBadge } from '../components/PredictionFlags';
 
 // ── Stability scale constants ─────────────────────────────────────────────────
 // Client convention: NEGATIVE ΔG = more stable. No qualitative text labels — number only.
@@ -129,7 +130,7 @@ function LegacyMutationView({ prediction }) {
 }
 
 // ── Suggested stabilizing mutations (residue-level ΔΔG scan) ───────────────────
-function StabilizingMutations({ candidates }) {
+function StabilizingMutations({ candidates, ddgSource }) {
   if (!candidates?.length) return null;
   // Plot stabilization magnitude (−ΔΔG) as upward bars from zero: taller = more
   // stabilizing. The signed ΔΔG is kept in the tooltip and the table below.
@@ -141,6 +142,7 @@ function StabilizingMutations({ candidates }) {
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 space-y-4">
+      <HeuristicNotice source={ddgSource} />
       <div>
         <h3 className="font-semibold text-gray-900 text-sm">Suggested Stabilizing Mutations</h3>
         <p className="text-xs text-gray-400 mt-0.5">
@@ -307,9 +309,14 @@ export default function Results() {
         {/* Header */}
         <div>
           <h2 className="text-xl font-bold text-gray-900 truncate">{header}</h2>
-          <p className="text-gray-400 text-sm mt-0.5">
-            {new Date(prediction.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
-            {' · '}{prediction.modelVersion || 'esm2-lora'}
+          <p className="text-gray-400 text-sm mt-0.5 flex items-center gap-2 flex-wrap">
+            <span>
+              {new Date(prediction.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+            </span>
+            {/* Named explicitly: ΔG from different models is not on a common scale,
+                so the reader needs to know which one produced this number. */}
+            <span aria-hidden="true">·</span>
+            <ModelBadge modelVersion={prediction.modelVersion || 'esm2-lora'} />
           </p>
         </div>
 
@@ -327,6 +334,11 @@ export default function Results() {
                 {prediction.dG >= 0 ? '+' : ''}{prediction.dG.toFixed(2)}
               </div>
               <div className="text-sm text-gray-500 mt-1">kcal / mol</div>
+              {prediction.inDistribution === false && (
+                <div className="mt-2 flex justify-center">
+                  <OutOfRangeBadge prediction={prediction} />
+                </div>
+              )}
             </div>
 
             {/* Gauge + explanation */}
@@ -358,8 +370,11 @@ export default function Results() {
           ))}
         </div>
 
+        {/* Extrapolation warning — shown above the mutation scan so it is read first */}
+        <OutOfRangeNotice prediction={prediction} />
+
         {/* Suggested stabilizing mutations (ΔΔG scan) */}
-        <StabilizingMutations candidates={prediction.candidates} />
+        <StabilizingMutations candidates={prediction.candidates} ddgSource={prediction.ddgSource} />
 
         {/* Truncation warning */}
         {prediction.truncated && (

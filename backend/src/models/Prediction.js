@@ -76,6 +76,15 @@ const predictionSchema = new mongoose.Schema({
   truncated:   { type: Boolean, default: false },
   latencyMs:   { type: Number },        // CNN inference latency
 
+  // Trust signals from the ML service (see ml-service/main.py::_prediction_flags).
+  // inDistribution=false means the prediction is extrapolation: the ΔG fell outside
+  // the training label range, or the sequence is longer than the model was trained on.
+  inDistribution: { type: Boolean, default: true },
+  flags:          [{ type: String }],
+  // 'heuristic' when the ΔΔG candidates came from the sequence-independent
+  // fallback rather than a trained ΔΔG model — see /suggest.
+  ddgSource:      { type: String },
+
   // Legacy mutation-candidate results (pre-Phase F)
   candidatesCount: { type: Number, default: 0 },
   candidates: [candidateSchema],

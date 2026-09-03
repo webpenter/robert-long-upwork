@@ -123,6 +123,10 @@ async function runPrediction(predictionId) {
       truncated   = false,
       latency_ms  = 0,
       model_name  = 'esm2-lora',
+      // Trust signals — the ML service flags extrapolation rather than hiding it.
+      // Default to in-distribution so the offline fallback isn't wrongly flagged.
+      in_distribution: inDistribution = true,
+      flags: mlFlags = [],
     } = result;
 
     // ── Residue-level stabilizing-mutation scan (ΔΔG) ────────────────────────
@@ -130,6 +134,7 @@ async function runPrediction(predictionId) {
     // Honours the user's residue selection + suggestion count.
     let candidates = [];
     let hotspotMap = [];
+    let ddgSource  = null;
     if (usedMLService) {
       try {
         const topK      = Math.max(1, Number(pred.suggestTopK) || 50);
@@ -160,6 +165,7 @@ async function runPrediction(predictionId) {
           stabilizationPotential: h.stabilizationPotential,
           mutationalTolerance:    h.mutationalTolerance,
         }));
+        ddgSource = scan.ddg_source || null;
       } catch (scanErr) {
         console.warn(`[prediction] stabilizing-mutation scan skipped (${scanErr.message})`);
       }
@@ -173,6 +179,9 @@ async function runPrediction(predictionId) {
       truncated,
       latencyMs:       latency_ms,
       modelVersion:    usedMLService ? model_name : `${model_name} [fallback]`,
+      inDistribution,
+      flags:           mlFlags,
+      ddgSource,
       candidates,
       hotspotMap,
       candidatesCount: candidates.length,

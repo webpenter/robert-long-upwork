@@ -34,6 +34,19 @@ CHECKPOINT     = Path(os.environ.get("ML_CHECKPOINT_PATH") or (MODELS_DIR / "bes
 DEVICE         = "cuda" if torch.cuda.is_available() else "cpu"
 VALID_AAS      = set("ACDEFGHIKLMNPQRSTVWYX")
 
+# Training-label range of the loaded gated checkpoint, in RAW model units
+# (higher = more stable). Read from the checkpoint's own region_metrics; verified
+# empirically — mutating GB1's buried Trp43 to Asp moves the raw prediction DOWN
+# by 14.6 kcal/mol, so higher really is more stable. See models/best_model.pt.meta.json.
+TRAIN_DG_MIN_RAW = -6.21
+TRAIN_DG_MAX_RAW =  9.77
+
+# The gated checkpoint's `configuration` records max_len=128 tokens (~126 residues)
+# and every training sequence was a 40-80 aa domain. We still *process* up to
+# _active_max_aa() residues, but anything past this is outside the trained regime
+# and is flagged rather than silently accepted.
+TRAINED_MAX_AA   = 126
+
 _model  = None   # loaded at startup
 _meta   = {}     # checkpoint metadata (model_type, model_name, val_metrics)
 _family = "cnn"  # 'cnn' | 'esm2_lora' | 'esm2_gated' — see protstab_predict._detect_family
@@ -130,13 +143,17 @@ class PredictRequest(BaseModel):
 
 
 class PredictResponse(BaseModel):
-    dg:          float
-    stability:   str
-    seq_len:     int
-    truncated:   bool
-    model_name:  str
-    device:      str
-    latency_ms:  float
+    dg:              float
+    stability:       str
+    seq_len:         int
+    truncated:       bool
+    model_name:      str
+    device:          str
+    latency_ms:      float
+    # Trust signals — see _prediction_flags(). Empty flags means the input sits
+    # inside the regime the model was actually trained on.
+    in_distribution: bool      = True
+    flags:           list[str] = []
 
 
 class BatchItem(BaseModel):
@@ -155,13 +172,22 @@ class BatchResultItem(BaseModel):
     stability: Optional[str]
     seq_len:   Optional[int]
     error:     Optional[str]
+    # rank 1 = most stable of the batch. This is the primary output: the client
+    # ranks variants off one scaffold and takes the head of the list, so ordering
+    # matters more than the absolute ΔG next to it.
+    rank:            Optional[int] = None
+    in_distribution: bool          = True
+    flags:           list[str]     = []
 
 
 class BatchResponse(BaseModel):
-    results:    list[BatchResultItem]
-    model_name: str
-    device:     str
-    latency_ms: float
+    results:     list[BatchResultItem]
+    model_name:  str
+    device:      str
+    latency_ms:  float
+    ranked_by:   str = "dg ascending (platform convention: more negative = more stable)"
+    n_ranked:    int = 0
+    n_flagged:   int = 0
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -187,6 +213,30 @@ def _clean_seq(raw: str) -> tuple[str, bool]:
     seq = seq.upper().replace(" ", "").replace("\n", "").replace("\r", "")
     truncated = len(seq) > max_aa
     return seq[:max_aa], truncated
+
+
+def _prediction_flags(dg_display: float, seq_len: int) -> tuple[list[str], bool]:
+    """Warnings for a single prediction. `dg_display` is in platform convention
+    (already negated: more negative = more stable), so the raw training range
+    [TRAIN_DG_MIN_RAW, TRAIN_DG_MAX_RAW] maps to [-TRAIN_DG_MAX_RAW, -TRAIN_DG_MIN_RAW].
+
+    Returns (flags, in_distribution). Nothing here changes the number returned —
+    it only tells the caller how much to trust it.
+    """
+    flags: list[str] = []
+    if _family == "esm2_gated":
+        lo, hi = -TRAIN_DG_MAX_RAW, -TRAIN_DG_MIN_RAW
+        if dg_display < lo or dg_display > hi:
+            flags.append(
+                f"dg_outside_training_range: the model never saw a label outside "
+                f"{lo:.2f}..{hi:.2f} kcal/mol, so this value is extrapolation"
+            )
+        if seq_len > TRAINED_MAX_AA:
+            flags.append(
+                f"length_beyond_training: trained on 40-80 aa domains "
+                f"(max_len {TRAINED_MAX_AA} aa); this sequence is {seq_len} aa"
+            )
+    return flags, not flags
 
 
 def _require_model():
@@ -219,11 +269,20 @@ def model_info():
                              "temperature/pH → MLP(64→32→1)",
             "parameters":    _model.count_parameters(),
             "max_len":       _active_max_aa(),
+            "trained_max_aa": TRAINED_MAX_AA,
             "usesConditions": True,
-            "input":         f"tokenized protein sequence (first {_active_max_aa()} aa, "
-                             "UNCONFIRMED truncation length) + temperature/pH conditions",
+            "input":         f"tokenized protein sequence (processed up to {_active_max_aa()} aa; "
+                             f"trained at max_len {TRAINED_MAX_AA} aa on 40-80 aa domains — "
+                             "longer inputs are flagged, not rejected) + temperature/pH conditions",
             "output":        "ΔG (kcal/mol) — more negative = more stable (platform convention)",
-            "training_data": "author-supplied (not yet documented in this repo)",
+            "convention":    "API/UI: more negative = more stable. Raw model: higher = more stable. "
+                             "The service negates at the boundary. Verified by GB1 Trp43->Asp.",
+            "training_dg_range": {
+                "raw":     [TRAIN_DG_MIN_RAW, TRAIN_DG_MAX_RAW],
+                "display": [-TRAIN_DG_MAX_RAW, -TRAIN_DG_MIN_RAW],
+                "_note":   "predictions outside the display range are extrapolation and are flagged",
+            },
+            "training_data": "author-supplied DMS libraries v4/v5/v7 (40-80 aa designed mini-proteins)",
             "val_metrics":   _meta.get("val_metrics"),
             "epoch":         _meta.get("epoch"),
             "phase":         "EXPERIMENTAL — env-conditioned model, not yet verified "
@@ -285,6 +344,8 @@ def predict(req: PredictRequest):
     dg  = round(-predict_one(seq, _model, DEVICE, conditions=req.conditions), 4)
     ms  = round((time.perf_counter() - t0) * 1000, 2)
 
+    flags, in_dist = _prediction_flags(dg, len(seq))
+
     return PredictResponse(
         dg=dg,
         stability=stability_label(dg),
@@ -293,6 +354,8 @@ def predict(req: PredictRequest):
         model_name=_active_model_name(),
         device=DEVICE,
         latency_ms=ms,
+        in_distribution=in_dist,
+        flags=flags,
     )
 
 
@@ -315,18 +378,28 @@ def predict_batch_endpoint(req: BatchRequest):
             if bad:
                 raise ValueError(f"Invalid characters: {sorted(bad)}")
             dg = round(-predict_one(seq, _model, DEVICE), 4)  # negate: negative ΔG = more stable
+            flags, in_dist = _prediction_flags(dg, len(seq))
             results.append(BatchResultItem(
                 id=item.id, dg=dg, stability=stability_label(dg),
                 seq_len=len(seq), error=None,
+                in_distribution=in_dist, flags=flags,
             ))
         except Exception as e:
             results.append(BatchResultItem(
                 id=item.id, dg=None, stability=None, seq_len=None, error=str(e),
             ))
 
+    # Rank is the primary output. 1 = most stable; failed rows keep rank=None so a
+    # bad sequence never silently occupies a place in the ordering.
+    ranked = sorted((r for r in results if r.dg is not None), key=lambda r: r.dg)
+    for i, r in enumerate(ranked, start=1):
+        r.rank = i
+
     ms = round((time.perf_counter() - t0) * 1000, 2)
     return BatchResponse(
         results=results, model_name=_active_model_name(), device=DEVICE, latency_ms=ms,
+        n_ranked=len(ranked),
+        n_flagged=sum(1 for r in results if r.flags),
     )
 
 
@@ -470,6 +543,7 @@ def suggest(req: SuggestRequest):
     hotspots.sort(key=lambda h: h["position"])
 
     ms = round((time.perf_counter() - t0) * 1000, 2)
+    wt_flags, wt_in_dist = _prediction_flags(wt_dg, len(seq))
     return {
         "wt_dg":      wt_dg,
         "seq_len":    len(seq),
@@ -479,38 +553,91 @@ def suggest(req: SuggestRequest):
         "candidates": candidates[:max(1, req.top_k)],
         "hotspotMap": hotspots,
         "latency_ms": ms,
+        # The wild-type ΔG above is a real model prediction and carries the same
+        # trust signals as /predict.
+        "wt_in_distribution": wt_in_dist,
+        "wt_flags":           wt_flags,
+        # Everything per-mutation below is NOT a model prediction. ddG, confidence
+        # and the hotspot map come from _heuristic_ddg / _heuristic_conf, which are
+        # deterministic functions of (position, wt_aa, mut_aa) only — they never
+        # touch the network. Two unrelated sequences produce byte-identical ddG for
+        # the same substitution (measured: 171/171 shared mutations identical).
+        # Labelled explicitly so the UI stops presenting them as data-backed.
+        "ddg_source": "heuristic",
+        "ddg_note":   "ddG, confidence and hotspotMap are a sequence-independent "
+                      "heuristic, not model output. Use for exploration only; do not "
+                      "rank bench candidates on these values. A trained ΔΔG model is "
+                      "the planned replacement.",
     }
+
+
+# Training-corpus facts cannot be recovered from a bare checkpoint. Rather than
+# hardcode one model's corpus and serve it for whichever checkpoint happens to be
+# loaded, look for it in two places and otherwise report it as unrecorded:
+#   1. a "training_meta" key inside the checkpoint itself (preferred — travels with
+#      the weights and can never drift), or
+#   2. a sidecar "<checkpoint>.meta.json" next to the .pt file.
+# See models/README.md for the expected shape.
+
+def _training_meta() -> tuple[dict, str]:
+    """Return (meta, source). Empty meta means nothing was recorded for this checkpoint."""
+    try:
+        ckpt = torch.load(str(CHECKPOINT), map_location="cpu", weights_only=False)
+        if isinstance(ckpt, dict) and isinstance(ckpt.get("training_meta"), dict):
+            return ckpt["training_meta"], "checkpoint"
+    except Exception:
+        pass
+    sidecar = CHECKPOINT.with_suffix(CHECKPOINT.suffix + ".meta.json")
+    if sidecar.exists():
+        try:
+            import json
+            with open(sidecar, encoding="utf-8") as fh:
+                return json.load(fh), f"sidecar ({sidecar.name})"
+        except Exception:
+            pass
+    return {}, "not recorded"
+
+
+def _architecture_string() -> str:
+    """Describe the architecture actually loaded, not a fixed string."""
+    if _family == "esm2_gated":
+        return ("ESM2-150M (facebook/esm2_t30_150M_UR50D) + LoRA r=32 on q/k/v/dense, "
+                "masked-mean pool -> Linear(640->64) gated by temperature/pH -> MLP(64->32->1)")
+    if _family == "esm2_lora":
+        return "ESM2-35M (facebook/esm2_t12_35M_UR50D) + LoRA r=16 (masked-mean pool + MLP head)"
+    return "1D CNN (one-hot, 3 ConvBlocks + GlobalAvgPool + MLP head)"
 
 
 @app.get("/dataset/stats")
 def dataset_stats():
-    """Training dataset statistics — used by Dataset Explorer UI."""
+    """Training dataset statistics for the checkpoint that is actually loaded."""
+    tm, source = _training_meta()
+    vm = _meta.get("val_metrics") or {}
     return {
         "modelVersion":    _active_model_name(),
-        "architecture":    "ESM2-35M + LoRA r=16 (masked-mean pool + MLP head)",
+        "modelType":       _family,
+        "architecture":    _architecture_string(),
         "parameters":      _model.count_parameters() if _model else None,
-        "nTrainingSeqs":   3300000,
-        "splits": {
-            "train": 3200000,
-            "val":   817,
-            "test":  3282,
-        },
-        "dgStats": {
-            "mean": 1.815,
-            "std":  3.10,
-            "min":  -19.0,
-            "max":  17.0,
-        },
+        "maxLen":          _active_max_aa() if _model else None,
+        "epoch":           _meta.get("epoch"),
+        # Corpus facts — present only when this checkpoint actually recorded them.
+        "nTrainingSeqs":   tm.get("n_training_seqs"),
+        "splits":          tm.get("splits"),
+        "dgStats":         tm.get("dg_stats"),
+        "trainingData":    tm.get("training_data"),
+        "trainingMetaSource": source,
         "valMetrics": {
-            "mae":         (_meta.get("val_metrics") or {}).get("mae"),
-            "rmse":        (_meta.get("val_metrics") or {}).get("rmse"),
-            "pearsonR":    (_meta.get("val_metrics") or {}).get("pearson_r"),
-            "spearmanRho": (_meta.get("val_metrics") or {}).get("spearman_rho"),
-            "note": "Validation metrics from training checkpoint" if _meta.get("val_metrics")
-                    else "Run POST /train to evaluate on val split",
+            "mae":         vm.get("mae"),
+            "rmse":        vm.get("rmse"),
+            "pearsonR":    vm.get("pearson_r"),
+            "spearmanRho": vm.get("spearman_rho"),
+            "accuracy":    vm.get("accuracy"),
+            "note": "Validation metrics recorded in the loaded checkpoint" if vm
+                    else "No validation metrics recorded in this checkpoint",
         },
-        "trainingData":  "~3.3M small-domain sequences (DMSv4/v5/v7 + Megascale DMS + MGnify), K50 → ΔG",
-        "phase":         "ESM2-35M LoRA r16 fine-tune",
+        "phase":         _meta.get("phase") or ("ESM2-150M gated fine-tune" if _family == "esm2_gated"
+                                                else "ESM2-35M LoRA r16 fine-tune" if _family == "esm2_lora"
+                                                else "CNN prototype"),
         "modelLoaded":   _model is not None,
         "checkpointPath": str(CHECKPOINT),
     }

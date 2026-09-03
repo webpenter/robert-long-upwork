@@ -9,11 +9,12 @@ Architecture supplied by the model author, verified layer-by-layer (strict
                projection, and both FFN dense layers)
   - env_gate : Linear(2,64) -> SiLU -> Linear(64,64) -> Sigmoid — takes
                [temperature, pH] and produces a per-feature multiplicative gate
-  - projector: Linear(640,64) — the checkpoint has ONLY this single Linear
-               (no LayerNorm/second Linear — the author's reference script had
-               a fuller Sequential here, but those extra layers have no
-               matching weights in this specific checkpoint, so they're
-               omitted to match what was actually trained)
+  - projector: Linear(640,64) -> SiLU — the checkpoint carries weights for the
+               Linear only. The SiLU is parameter-free and therefore invisible
+               to a state_dict, so it was restored on empirical evidence rather
+               than from the file (see the comment on protein_projector below).
+               The author's LayerNorm and second Linear remain omitted: those
+               DO have weights, and none are present in this checkpoint.
   - fusion   : protein_feats * (1 + gate)   — residual gating, never fully
                zeroes the sequence signal
   - head     : Linear(64,32) -> SiLU -> Dropout(0.2) -> Linear(32,1)
@@ -96,10 +97,29 @@ class ESM2GatedStabilityModel(nn.Module):
             nn.Linear(64, 64),
             nn.Sigmoid(),
         )
-        # Matches the checkpoint exactly: single Linear, no LayerNorm/extra
-        # Linear (see module docstring).
+        # Linear + SiLU. The checkpoint carries weights for the Linear only, but a
+        # SiLU has NO PARAMETERS, so its presence or absence leaves no trace in a
+        # state_dict: load_state_dict reports 0 missing / 0 unexpected either way and
+        # simply cannot distinguish the two. An earlier clean load was mistaken for
+        # proof this block was a bare Linear — it proves nothing about parameter-free
+        # layers.
+        #
+        # The author's reference code has nn.SiLU() at index 2, and restoring it
+        # reproduces the training distribution on three independent checks:
+        #   * output span over 32 real sequences  39.10 -> 16.49  (labels span 15.98)
+        #   * GB1 wild-type                       11.11 ->  6.32  (literature ~5-6)
+        #   * predictions outside the label range 12/32 ->  5/32
+        # and it behaves the same way on both the epoch-4 and expert1 checkpoints,
+        # which is what you expect from a serving bug rather than a model fault.
+        #
+        # Ranking is unaffected (Spearman +0.9993 vs. without): SiLU turns at
+        # x = -1.278 and this projector's minimum output is -1.146, so SiLU is
+        # monotonic across the whole range in use. This is a pure recalibration.
+        #
+        # PENDING CONFIRMATION — Q1 in ml-questions.md. To revert: delete nn.SiLU().
         self.protein_projector = nn.Sequential(
             nn.Linear(640, 64),
+            nn.SiLU(),
         )
         self.regression_head = nn.Sequential(
             nn.Linear(64, 32),
@@ -168,8 +188,13 @@ def predict_batch(seqs, model, device="cpu", conditions=None):
     distribution; see module docstring).
     """
     tok = _get_tokenizer()
+    # padding=True pads to the longest sequence in the batch rather than always to
+    # TOK_MAX_LEN. forward() mean-pools under the attention mask, so pad tokens never
+    # reach the output — the prediction is bit-identical either way, but a typical
+    # 80 aa request now runs ~6x faster (2.35s -> 0.36s measured on 4 CPU threads)
+    # instead of pushing 514 tokens through 30 transformer layers for nothing.
     enc = tok([s.upper().strip() for s in seqs],
-              return_tensors="pt", padding="max_length", truncation=True, max_length=TOK_MAX_LEN)
+              return_tensors="pt", padding=True, truncation=True, max_length=TOK_MAX_LEN)
     enc = {k: v.to(device) for k, v in enc.items()}
 
     conditions = conditions or [{}] * len(seqs)

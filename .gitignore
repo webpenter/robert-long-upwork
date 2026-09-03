@@ -49,3 +49,11 @@ ml-service/models/best_model_r16_backup.pt
 ml-service/models/best_model_epoch3_backup.pt
 ml-service/models/updated-best_model_esm2/
 ml-service/models/updated_best_model_esm2_rezipped.pt
+
+# DB backups written before destructive migrations (contain user sequences)
+backend/backups/
+
+# Local-only checkpoints from the 2026-08-29 model swap. Each is ~640 MB and
+# goes through LFS; only the deployed best_model.pt belongs in the repo.
+ml-service/models/best_model_epoch4_gated_backup_20260829.pt
+ml-service/models/new-updated-_the_Best_model.pt

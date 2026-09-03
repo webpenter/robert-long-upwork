@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FlaskConical, Zap, ChevronRight, Search, Loader2 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { ModelBadge, MixedModelWarning } from '../components/PredictionFlags';
 
 const STATUS_STYLE = {
   COMPLETED: 'bg-green-100 text-green-700',
@@ -75,6 +76,9 @@ export default function Predictions() {
           </button>
         </div>
       ) : (
+        <div className="space-y-4">
+        <MixedModelWarning predictions={filtered} action="Comparing ΔG" />
+
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
           <table className="w-full">
             <thead>
@@ -82,6 +86,7 @@ export default function Predictions() {
                 <th className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Sequence</th>
                 <th className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">ΔG (kcal/mol)</th>
                 <th className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Stability</th>
+                <th className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Model</th>
                 <th className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
                 <th className="px-5 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Date</th>
                 <th className="px-5 py-3"></th>
@@ -102,6 +107,9 @@ export default function Predictions() {
                   </td>
                   <td className="px-5 py-4 text-sm text-gray-600 capitalize">{p.stability || '—'}</td>
                   <td className="px-5 py-4">
+                    <ModelBadge modelVersion={p.modelVersion} />
+                  </td>
+                  <td className="px-5 py-4">
                     <span className={`text-xs font-medium px-2 py-1 rounded-full ${STATUS_STYLE[p.status] || 'bg-gray-100 text-gray-600'}`}>
                       {p.status}
                     </span>
@@ -116,6 +124,7 @@ export default function Predictions() {
               ))}
             </tbody>
           </table>
+        </div>
         </div>
       )}
     </div>

@@ -1,0 +1,117 @@
+{
+  "_comment": [
+    "Training provenance for best_model.pt (ESM2-150M + LoRA r32 + temperature/pH gating).",
+    "Served by GET /dataset/stats. Most fields below are now REAL, read out of the",
+    "checkpoint itself, which carries experiment/epoch/val_metrics/region_metrics/",
+    "length_metrics/configuration keys. Fields still null or UNCONFIRMED are awaiting the",
+    "model author — see models/README.md.",
+    "",
+    "CONVENTION (verified empirically 2026-08-29): higher dG = MORE stable in raw model",
+    "units. Confirmed by mutating GB1's buried Trp43 to Asp — a known strongly",
+    "destabilising substitution — which moved the prediction DOWN by 14.6 kcal/mol. The",
+    "API negates at the boundary so the UI shows more-negative = more stable.",
+    "NOTE: the checkpoint's own region_metrics label the LOW dG band 'STABLE' and the HIGH",
+    "band 'UNSTABLE'. Those names are inverted with respect to the data. Raised with the",
+    "model author as Q3."
+  ],
+  "experiment": "expert1_region_aware",
+  "epoch": 2,
+  "val_metrics": {
+    "n": 40146,
+    "mae": 0.6873,
+    "rmse": 1.0286,
+    "pearson": 0.8581,
+    "spearman": 0.8607,
+    "accuracy": 0.8465,
+    "_note": "accuracy definition not yet supplied by the model author"
+  },
+  "region_metrics": [
+    {
+      "band": "dG -6.205 .. 0.066",
+      "actually": "least stable",
+      "n": 17964,
+      "mae": 0.8032,
+      "rmse": 1.1215,
+      "train_weight": 1.5
+    },
+    {
+      "band": "dG  0.067 .. 2.990",
+      "actually": "central",
+      "n": 18867,
+      "mae": 0.4836,
+      "rmse": 0.6993,
+      "train_weight": 1.0
+    },
+    {
+      "band": "dG  2.992 .. 9.773",
+      "actually": "most stable",
+      "n": 3315,
+      "mae": 1.2186,
+      "rmse": 1.7927,
+      "train_weight": 1.15
+    }
+  ],
+  "length_metrics": [
+    {
+      "band": "<=60 aa",
+      "n": 1843,
+      "mae": 0.6423,
+      "rmse": 0.9069,
+      "mean_length": 56.47
+    },
+    {
+      "band": "61-80 aa",
+      "n": 38303,
+      "mae": 0.6895,
+      "rmse": 1.0341,
+      "mean_length": 77.69
+    }
+  ],
+  "dg_stats": {
+    "min": -6.205,
+    "max": 9.773,
+    "median": 0.224,
+    "_source": "decile edges of the validation label distribution"
+  },
+  "n_training_seqs": null,
+  "splits": null,
+  "training_data": null,
+  "configuration": {
+    "seed": 42,
+    "esm2_model": "facebook/esm2_t30_150M_UR50D",
+    "max_len": 128,
+    "lr": 2e-05,
+    "epochs": 2,
+    "low_cutoff": 0.06636,
+    "high_cutoff": 2.99038,
+    "low_region_weight": 1.5,
+    "central_region_weight": 1.0,
+    "high_region_weight": 1.15
+  },
+  "env_normalization": {
+    "status": "UNCONFIRMED — awaiting model author",
+    "currently_applied": "raw",
+    "candidates": [
+      "raw",
+      "minmax",
+      "zscore"
+    ],
+    "evidence": "raw (37 C, pH 7) saturates env_gate (mean 0.9603, pinned at 1.0); inputs near 0 give a healthy spread (0.51-0.78), suggesting training used normalised values",
+    "temperature_range_c": null,
+    "ph_range": null
+  },
+  "tokenizer_max_length": {
+    "status": "checkpoint configuration says max_len=128; service still applies 514",
+    "trained_with": 128,
+    "currently_applied": 514,
+    "_note": "No effect on the 40-80 aa training domains, but anything over 126 residues is processed outside the trained context. Decide before full-length work."
+  },
+  "projector_activation": {
+    "status": "APPLIED 2026-08-29, pending author confirmation (Q1 in ml-questions.md)",
+    "currently_applied": "nn.SiLU() after protein_projector[0]",
+    "issue": "SiLU has no parameters, so it leaves no trace in a checkpoint and load_state_dict reports 0 missing / 0 unexpected whether or not it was trained with one. An earlier clean load was wrongly read as proof this block was a bare Linear.",
+    "evidence": "Restoring SiLU: output span over 32 real sequences 39.10 -> 16.49 (labels 15.98); GB1 wild-type 11.11 -> 6.32 (literature ~5-6 kcal/mol); out-of-label-range predictions 12/32 -> 5/32. Same behaviour on both the epoch-4 and expert1 checkpoints.",
+    "ranking_impact": "none - Spearman +0.9993 vs without. SiLU turns at x=-1.278 and the projector's minimum output is -1.146, so it is monotonic across the range in use.",
+    "revert": "delete nn.SiLU() from protein_projector in ml-service/esm2_gated_model.py"
+  }
+}
