@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Upload, CheckCircle2, AlertCircle, Loader2, Dna, Zap, Thermometer } from 'lucide-react';
 import { parseMultiFASTA, validateSequence, extractFeatures } from '../services/mlService';
 import { useApp } from '../context/AppContext';
@@ -26,9 +26,18 @@ export default function NewPrediction() {
   const { addPrediction, addPredictionsBatch, pollPrediction } = useApp();
   const navigate = useNavigate();
 
+  // VariantDetail links here as /predict?variantId=... so the resulting prediction
+  // can be joined back to that variant's bench measurements. The parameter was
+  // previously read by nobody, so Prediction.variant stayed null on every record —
+  // which is why the predicted-vs-measured view had nothing to pair.
+  const [searchParams] = useSearchParams();
+  const variantId = searchParams.get('variantId') || '';
+  const [linkedVariant, setLinkedVariant] = useState(null);
+
   useEffect(() => {
     api.get('/ml/info').then(setModelInfo).catch(() => setModelInfo(null));
   }, []);
+
 
   const maxLen = modelInfo?.max_len || 80;
   const usesConditions = !!modelInfo?.usesConditions;
@@ -68,6 +77,21 @@ export default function NewPrediction() {
       setFastaInfo({ multi: true, count: records.length });
     }
   };
+
+  // Declared after handleFastaChange on purpose — the prefill calls it, and
+  // reaching it from above would capture a stale binding.
+  useEffect(() => {
+    if (!variantId) return;
+    api.get(`/variants/${variantId}`)
+      .then(({ variant }) => {
+        setLinkedVariant(variant);
+        if (variant?.fastaSequence) handleFastaChange(variant.fastaSequence);
+      })
+      .catch(() => setLinkedVariant(null));
+    // handleFastaChange is rebuilt every render, so listing it as a dependency
+    // would refetch the variant on each one. This should run once per variantId.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [variantId]);
 
   const handleFile = (e) => {
     const file = e.target.files?.[0];
@@ -109,6 +133,7 @@ export default function NewPrediction() {
           conditions,
           suggestTopK:      Number(topK) > 0 ? Number(topK) : 50,
           residueSelection: residueSelection.trim(),
+          variantId:        variantId || undefined,
         });
         await pollPrediction(prediction._id, (updated) => {
           if (updated.status === 'RUNNING') setProgress(p => Math.min(p + 5, 92));
@@ -194,6 +219,25 @@ export default function NewPrediction() {
           {modelInfo?.name ? ` using ${modelInfo.name}` : ''}
         </p>
       </div>
+
+      {/* Linked variant — this prediction will be comparable to its measurements */}
+      {linkedVariant && (
+        <div className="flex items-start gap-3 border border-green-200 bg-green-50 rounded-xl px-4 py-3 mb-5 text-sm">
+          <Dna className="w-4 h-4 flex-shrink-0 text-green-600 mt-0.5" />
+          <div className="text-green-800">
+            <span className="font-semibold">Linked to variant {linkedVariant.name}</span>
+            {linkedVariant.mutations?.length > 0 && (
+              <span className="font-mono text-green-700">
+                {' '}({linkedVariant.mutations.map(m => m.notation || `${m.from}${m.position}${m.to}`).join(', ')})
+              </span>
+            )}
+            <p className="text-green-700 mt-0.5">
+              The sequence has been filled in below. This result will appear in
+              Predicted vs. Measured alongside the bench data for this variant.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Model info banner */}
       <div className={`flex items-center gap-3 border rounded-xl px-4 py-3 mb-5 text-sm ${

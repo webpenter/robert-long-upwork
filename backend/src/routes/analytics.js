@@ -2,8 +2,10 @@ const express = require('express');
 const Experiment = require('../models/Experiment');
 const Measurement = require('../models/Measurement');
 const { authenticate } = require('../middleware/auth');
-const { computeHalfLives, normalizeToReference, computeApparentTm, runGrubbsTest } = require('../services/analyticsService');
+const { computeHalfLives, normalizeToReference, computeApparentTm, runGrubbsTest,
+        rankableMetric, isRankable, MIN_R2 } = require('../services/analyticsService');
 const Project = require('../models/Project');
+const { predictedVsMeasured } = require('../services/validationService');
 
 const router = express.Router();
 router.use(authenticate);
@@ -53,10 +55,17 @@ router.get('/summary/:experimentId', async (req, res, next) => {
     const foldChanges = [];
     const apparentTms = [];
 
+    // Only fits that pass the R2 gate are eligible for the rankings below — a
+    // non-decaying well fits with k ~ 0 and produces an enormous, meaningless t-half.
+    let excludedPoorFit = 0;
     for (const m of measurements) {
-      const hl = m.derivedMetrics?.find(d => d.metricType === 'half_life');
-      const fc = m.derivedMetrics?.find(d => d.metricType === 'fold_change');
-      const tm = m.derivedMetrics?.find(d => d.metricType === 'apparent_tm');
+      const hlRaw = m.derivedMetrics?.find(d => d.metricType === 'half_life');
+      const tmRaw = m.derivedMetrics?.find(d => d.metricType === 'apparent_tm');
+      const hl = rankableMetric(m, 'half_life');
+      const fc = rankableMetric(m, 'fold_change');
+      const tm = rankableMetric(m, 'apparent_tm');
+      if (hlRaw?.value != null && !hl) excludedPoorFit++;
+      if (tmRaw?.value != null && !tm) excludedPoorFit++;
       if (hl?.value != null) halfLives.push({ value: hl.value, r2: hl.goodnessOfFit, measurement: m });
       if (fc?.value != null) foldChanges.push({ value: fc.value, measurement: m });
       if (tm?.value != null) apparentTms.push({ value: tm.value, r2: tm.goodnessOfFit, measurement: m });
@@ -97,6 +106,13 @@ router.get('/summary/:experimentId', async (req, res, next) => {
       }));
 
     res.json({
+      fitGate: {
+        minR2: MIN_R2,
+        excludedPoorFit,
+        note: excludedPoorFit
+          ? `${excludedPoorFit} metric(s) excluded from rankings for failing the goodness-of-fit threshold. They remain stored and visible in the measurement table.`
+          : 'All fits passed the goodness-of-fit threshold.',
+      },
       halfLifeStats: {
         count: halfLives.length,
         mean: mean(halfLives.map(h => h.value))?.toFixed(2) ?? null,
@@ -154,9 +170,11 @@ router.get('/mutations/:projectId', async (req, res, next) => {
     for (const m of measurements) {
       const vid = String(m.variant);
       if (!metricsByVariant[vid]) metricsByVariant[vid] = { halfLives: [], foldChanges: [] };
+      // Same fit gate — a failed decay fit would otherwise dominate bestDelta.
       for (const d of m.derivedMetrics || []) {
-        if (d.metricType === 'half_life'  && d.value != null) metricsByVariant[vid].halfLives.push(d.value);
-        if (d.metricType === 'fold_change' && d.value != null) metricsByVariant[vid].foldChanges.push(d.value);
+        if (d.value == null || !isRankable(d)) continue;
+        if (d.metricType === 'half_life')   metricsByVariant[vid].halfLives.push(d.value);
+        if (d.metricType === 'fold_change') metricsByVariant[vid].foldChanges.push(d.value);
       }
     }
 
@@ -169,7 +187,9 @@ router.get('/mutations/:projectId', async (req, res, next) => {
     }).select('derivedMetrics').lean();
 
     const wtHalfLives = wtMs.flatMap(m =>
-      (m.derivedMetrics || []).filter(d => d.metricType === 'half_life').map(d => d.value)
+      (m.derivedMetrics || [])
+        .filter(d => d.metricType === 'half_life' && isRankable(d))
+        .map(d => d.value)
     ).filter(v => v != null);
     const wtHalfLife = wtHalfLives.length
       ? parseFloat((wtHalfLives.reduce((a, b) => a + b, 0) / wtHalfLives.length).toFixed(3))
@@ -252,10 +272,13 @@ router.get('/campaign/:projectId', async (req, res, next) => {
       const eid = String(m.experiment);
       if (!byExp[eid]) byExp[eid] = { halfLives: [], foldChanges: [], apparentTms: [], n: 0 };
       byExp[eid].n += 1;
+      // Fit gate: poor fits are excluded so `bestHalfLife`/`bestTm` (a Math.max)
+      // cannot be won by a well that failed to fit.
       for (const d of m.derivedMetrics || []) {
-        if (d.metricType === 'half_life'   && d.value != null) byExp[eid].halfLives.push(d.value);
-        if (d.metricType === 'fold_change'  && d.value != null) byExp[eid].foldChanges.push(d.value);
-        if (d.metricType === 'apparent_tm'  && d.value != null) byExp[eid].apparentTms.push(d.value);
+        if (d.value == null || !isRankable(d)) continue;
+        if (d.metricType === 'half_life')   byExp[eid].halfLives.push(d.value);
+        if (d.metricType === 'fold_change') byExp[eid].foldChanges.push(d.value);
+        if (d.metricType === 'apparent_tm') byExp[eid].apparentTms.push(d.value);
       }
     }
 
@@ -281,6 +304,30 @@ router.get('/campaign/:projectId', async (req, res, next) => {
 
     res.json({ project: project.name, experiments: result });
   } catch (err) {
+    next(err);
+  }
+});
+
+// GET /api/analytics/predicted-vs-measured?projectId=&experimentId=&metric=
+//
+// Joins model predictions to bench measurements through Variant and reports how
+// well the predicted ordering matched the measured one. Scope is a whole project
+// by default, or a single experiment when experimentId is given.
+router.get('/predicted-vs-measured', async (req, res, next) => {
+  try {
+    const { projectId, experimentId, metric } = req.query;
+    if (!projectId && !experimentId) {
+      return res.status(400).json({ error: 'projectId or experimentId is required' });
+    }
+
+    const result = await predictedVsMeasured({
+      projectId,
+      experimentId,
+      metricType: metric || 'apparent_tm',
+    });
+    res.json(result);
+  } catch (err) {
+    if (err.status === 400) return res.status(400).json({ error: err.message });
     next(err);
   }
 });

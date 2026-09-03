@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, FlaskConical, Settings, LogOut, Upload, Dna, BarChart3, Brain, GitCompare, Microscope, History } from 'lucide-react';
+import { LayoutDashboard, FlaskConical, Settings, LogOut, Upload, Dna, BarChart3, Brain, GitCompare, Microscope, History, Target } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function Sidebar() {
@@ -33,6 +33,7 @@ export default function Sidebar() {
       items: [
         { to: '/predict', icon: FlaskConical, label: 'New Prediction' },
         { to: '/predictions', icon: History, label: 'Prediction History', end: true },
+        { to: '/validation', icon: Target, label: 'Predicted vs Measured' },
         ...(isAdmin ? [{ to: '/model', icon: Brain, label: 'Model Manager' }] : []),
       ],
     },
