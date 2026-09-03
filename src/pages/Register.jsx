@@ -19,7 +19,7 @@ export default function Register() {
     if (form.password.length < 6) { setError('Password must be at least 6 characters'); return; }
     setLoading(true);
     try {
-      register(form.name, form.email, form.password);
+      await register(form.name, form.email, form.password);
       navigate('/dashboard');
     } catch (err) {
       setError(err.message);

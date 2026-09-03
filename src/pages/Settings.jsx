@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { User, Key, CreditCard, Save, CheckCircle2, Eye, EyeOff, Copy } from 'lucide-react';
+import { User, CreditCard, Save, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 function Section({ title, icon: Icon, children }) {
@@ -16,8 +16,6 @@ function Section({ title, icon: Icon, children }) {
   );
 }
 
-const MOCK_API_KEY = 'enzml_sk_live_a8f3c2d9e1b7f4a2c6e8d0f1b3a5c7e9';
-
 export default function Settings() {
   const { user, updateUser } = useAuth();
   const [profile, setProfile] = useState({
@@ -27,8 +25,6 @@ export default function Settings() {
     role: user?.role || 'Scientist',
   });
   const [saved, setSaved] = useState(false);
-  const [showKey, setShowKey] = useState(false);
-  const [keyCopied, setKeyCopied] = useState(false);
 
   const set = (field) => (e) => setProfile(p => ({ ...p, [field]: e.target.value }));
 
@@ -37,13 +33,6 @@ export default function Settings() {
     await updateUser({ name: profile.name, institution: profile.institution });
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
-  };
-
-  const copyKey = () => {
-    navigator.clipboard.writeText(MOCK_API_KEY).then(() => {
-      setKeyCopied(true);
-      setTimeout(() => setKeyCopied(false), 2000);
-    });
   };
 
   return (
@@ -101,24 +90,6 @@ export default function Settings() {
             </button>
           </div>
         </form>
-      </Section>
-
-      {/* API Keys */}
-      <Section title="API Keys" icon={Key}>
-        <p className="text-sm text-gray-500 mb-4">Use your API key to access the EnzymeML REST API from your own scripts and pipelines.</p>
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 flex items-center gap-3">
-          <code className="flex-1 text-sm font-mono text-gray-700">
-            {showKey ? MOCK_API_KEY : '•'.repeat(MOCK_API_KEY.length)}
-          </code>
-          <button onClick={() => setShowKey(!showKey)} className="text-gray-400 hover:text-gray-600 p-1">
-            {showKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-          </button>
-          <button onClick={copyKey} className="text-gray-400 hover:text-gray-600 p-1">
-            {keyCopied ? <CheckCircle2 className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
-          </button>
-        </div>
-        <p className="text-xs text-gray-400 mt-2">Keep this key secret. Do not share it in public repositories.</p>
-        <button className="mt-3 text-sm text-red-500 hover:text-red-600 font-medium">Regenerate key</button>
       </Section>
 
       {/* Subscription */}
