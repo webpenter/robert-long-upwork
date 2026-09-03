@@ -12,8 +12,14 @@ Run (from the repo root or anywhere):
   # PowerShell:
   $env:HF_TOKEN="hf_xxx"; python ml-service/deploy_hf.py <hf-username>/hsfast-ml
 
-It creates the Space if needed and uploads the folder (the 130MB model goes via
-LFS automatically). Afterwards, set ML_SERVICE_URL on Render to the Space URL.
+It creates the Space if needed and uploads the folder. The checkpoint goes via
+LFS automatically; it is ~640MB for the current ESM2-150M gated model, so the
+first upload takes a while. Afterwards, set ML_SERVICE_URL on Render to the
+Space URL.
+
+Note the model is taken from this folder on disk, NOT from git — so the Space
+gets whatever best_model.pt is here locally, which may differ from the copy
+committed to the repository.
 """
 import os
 import sys
@@ -41,8 +47,11 @@ def main():
         repo_type="space",
         ignore_patterns=[
             "__pycache__/*", "*.pyc", ".git/*", "*.rar", "eval_dmsv4.py", "deploy_hf.py",
-            # only best_model.pt is served — don't ship local backups/duplicates
-            "models/best_model_r8_backup.pt", "models/best_model_esm2 (1).pt",
+            # Only best_model.pt is served. Everything else in models/ is a local
+            # backup or a candidate checkpoint, and each is roughly 640MB — shipping
+            # them would add gigabytes to the Space for no benefit.
+            "models/*backup*.pt", "models/new-updated-*.pt", "models/best_model_esm2*.pt",
+            "models/best_model_r*.pt",
         ],
         commit_message="Deploy hsFAST ML service",
     )

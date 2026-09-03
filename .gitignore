@@ -5,7 +5,8 @@
 client-data/
 
 # User-uploaded files
-backend/uploads/
+backend/uploads/*
+!backend/uploads/.gitkeep
 
 # Python
 __pycache__/
@@ -57,3 +58,14 @@ backend/backups/
 # goes through LFS; only the deployed best_model.pt belongs in the repo.
 ml-service/models/best_model_epoch4_gated_backup_20260829.pt
 ml-service/models/new-updated-_the_Best_model.pt
+
+# Internal working notes: drafts, client correspondence, teammate analysis.
+# This repo is public - none of this should ever be published.
+client-*.md
+ml-questions.md
+ml-findings.md
+ml-teammate/
+working methodology.md
+
+# Stray data exports at the repo root (assay data belongs in the database)
+/*.csv
