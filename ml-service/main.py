@@ -13,6 +13,7 @@ Endpoints:
 """
 
 import hashlib
+import json
 import os
 import sys
 import time
@@ -73,17 +74,40 @@ def _clean_val_metrics(val_metrics):
 
 
 def _read_meta() -> dict:
-    """Read lightweight metadata from the checkpoint without keeping it in memory."""
+    """Read lightweight metadata from the checkpoint, with val_metrics specifically
+    overridden by the sidecar <checkpoint>.meta.json when one exists.
+
+    Two metadata sources exist here for historical reasons: whatever got embedded
+    in the .pt file at save time (frozen — correcting so much as a typo means
+    re-saving the whole ~700MB checkpoint), and the sidecar file, which is the one
+    actually maintained by hand (see models/README.md — it carries region_metrics,
+    length_metrics, the SiLU-fix writeup, etc.). val_metrics had drifted between
+    them: the embedded copy is missing the sample size and the accuracy caveat
+    that the sidecar carries, and that gap was invisible from the API — a missing
+    key just looks like a checkpoint that never recorded it. The sidecar wins for
+    val_metrics specifically; every other field still comes from the checkpoint.
+    """
+    meta = {}
     try:
         ckpt = torch.load(str(CHECKPOINT), map_location="cpu", weights_only=False)
         if isinstance(ckpt, dict):
             meta = {k: ckpt[k] for k in ("model_type", "model_name", "epoch", "val_metrics") if k in ckpt}
-            if "val_metrics" in meta:
-                meta["val_metrics"] = _clean_val_metrics(meta["val_metrics"])
-            return meta
     except Exception:
         pass
-    return {}
+
+    sidecar_path = CHECKPOINT.with_suffix(CHECKPOINT.suffix + ".meta.json")
+    if sidecar_path.exists():
+        try:
+            with open(sidecar_path, encoding="utf-8") as fh:
+                sidecar = json.load(fh)
+            if isinstance(sidecar.get("val_metrics"), dict):
+                meta["val_metrics"] = sidecar["val_metrics"]
+        except Exception:
+            pass
+
+    if "val_metrics" in meta:
+        meta["val_metrics"] = _clean_val_metrics(meta["val_metrics"])
+    return meta
 
 
 def _active_model_name() -> str:
@@ -599,7 +623,6 @@ def _training_meta() -> tuple[dict, str]:
     sidecar = CHECKPOINT.with_suffix(CHECKPOINT.suffix + ".meta.json")
     if sidecar.exists():
         try:
-            import json
             with open(sidecar, encoding="utf-8") as fh:
                 return json.load(fh), f"sidecar ({sidecar.name})"
         except Exception:
