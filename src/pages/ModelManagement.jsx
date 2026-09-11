@@ -112,10 +112,15 @@ export default function ModelManagement() {
 
   // Validation metrics as reported by the loaded checkpoint. Correlations are on a
   // 0–1 scale; errors are in kcal/mol and get their own axis below.
+  // vm comes from /model/info's raw pass-through of the checkpoint's own
+  // meta.json, whose keys are "pearson"/"spearman" — no _r/_rho suffix. This
+  // previously read vm.pearson_r/vm.spearman_rho, which don't exist on that
+  // object, so both cards silently rendered nothing while Accuracy — the one
+  // metric here without an agreed definition — was the only one that showed up.
   const corrData = [
-    { name: 'Pearson r',   value: vm.pearson_r    != null ? +Number(vm.pearson_r).toFixed(3)    : null, fill: '#3b82f6' },
-    { name: 'Spearman ρ',  value: vm.spearman_rho != null ? +Number(vm.spearman_rho).toFixed(3) : null, fill: '#8b5cf6' },
-    { name: 'Accuracy',    value: vm.accuracy     != null ? +Number(vm.accuracy).toFixed(3)     : null, fill: '#10b981' },
+    { name: 'Pearson r',   value: vm.pearson  != null ? +Number(vm.pearson).toFixed(3)  : null, fill: '#3b82f6' },
+    { name: 'Spearman ρ',  value: vm.spearman != null ? +Number(vm.spearman).toFixed(3) : null, fill: '#8b5cf6' },
+    { name: 'Accuracy',    value: vm.accuracy != null ? +Number(vm.accuracy).toFixed(3) : null, fill: '#10b981' },
   ].filter(d => d.value != null);
 
   const hasCorpus = stats && (stats.nTrainingSeqs != null || stats.trainingData != null);
@@ -183,8 +188,8 @@ export default function ModelManagement() {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <MetricCard label="MAE"       value={fmt(vm.mae, 3)}        sub="kcal/mol · lower is better" accent="green" />
             <MetricCard label="RMSE"      value={fmt(vm.rmse, 3)}       sub="kcal/mol · lower is better" accent="amber" />
-            <MetricCard label="Pearson r" value={fmt(vm.pearson_r, 3)}  sub="linear correlation"          accent="blue" />
-            <MetricCard label="Spearman ρ" value={fmt(vm.spearman_rho, 3)} sub="rank correlation"         accent="violet" />
+            <MetricCard label="Pearson r" value={fmt(vm.pearson, 3)}  sub="linear correlation"          accent="blue" />
+            <MetricCard label="Spearman ρ" value={fmt(vm.spearman, 3)} sub="rank correlation"         accent="violet" />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
@@ -278,11 +283,21 @@ export default function ModelManagement() {
                     { dt: 'Parameters', dd: fmtInt(info.parameters) },
                     { dt: 'Epoch',      dd: info.epoch ?? '—' },
                     { dt: 'Conditions', dd: info.usesConditions ? 'temperature + pH' : 'not used' },
-                    { dt: 'Accuracy',   dd: vm.accuracy != null ? fmt(vm.accuracy, 4) : '—' },
-                  ].map(({ dt, dd }) => (
+                    {
+                      dt: 'Accuracy',
+                      dd: vm.accuracy != null ? fmt(vm.accuracy, 4) : '—',
+                      // This is a pass-through number from the checkpoint's own
+                      // training run, not something computed here, and its exact
+                      // definition (accuracy at what threshold, of what
+                      // classification) has not been confirmed by the model
+                      // author. MAE and Spearman above have unambiguous
+                      // definitions; this one does not yet.
+                      title: vm._note || 'Definition not yet confirmed by the model author.',
+                    },
+                  ].map(({ dt, dd, title }) => (
                     <div key={dt} className="flex justify-between gap-2">
                       <dt className="text-gray-500">{dt}</dt>
-                      <dd className="font-mono text-gray-800 text-right truncate max-w-[140px]" title={String(dd)}>{dd}</dd>
+                      <dd className="font-mono text-gray-800 text-right truncate max-w-[140px]" title={title ?? String(dd)}>{dd}</dd>
                     </div>
                   ))}
                 </dl>

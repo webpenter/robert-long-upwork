@@ -52,7 +52,16 @@ _meta   = {}     # checkpoint metadata (model_type, model_name, val_metrics)
 _family = "cnn"  # 'cnn' | 'esm2_lora' | 'esm2_gated' — see protstab_predict._detect_family
 
 
-_SCALAR_VAL_METRIC_KEYS = ("mae", "rmse", "pearson_r", "spearman_rho", "accuracy")
+# NOTE: these must match the key names the checkpoint's own meta.json actually
+# uses (see best_model.pt.meta.json) — "pearson"/"spearman", not "pearson_r"/
+# "spearman_rho". A prior version of this list used the wrong names, which
+# silently deleted Pearson, Spearman, the sample size and the accuracy caveat
+# from every API response (/model/info, /dataset/stats) with no error anywhere,
+# since an empty filter result looks identical to "the checkpoint never recorded
+# this metric." Caught only because a client asked what "accuracy" meant, and
+# Pearson/Spearman should have been sitting right next to it for context and
+# were not.
+_SCALAR_VAL_METRIC_KEYS = ("n", "mae", "rmse", "pearson", "spearman", "accuracy", "_note")
 
 
 def _clean_val_metrics(val_metrics):
@@ -627,11 +636,20 @@ def dataset_stats():
         "trainingData":    tm.get("training_data"),
         "trainingMetaSource": source,
         "valMetrics": {
-            "mae":         vm.get("mae"),
-            "rmse":        vm.get("rmse"),
-            "pearsonR":    vm.get("pearson_r"),
-            "spearmanRho": vm.get("spearman_rho"),
-            "accuracy":    vm.get("accuracy"),
+            "mae":          vm.get("mae"),
+            "rmse":         vm.get("rmse"),
+            # Source keys are "pearson"/"spearman" (no suffix) — that's what the
+            # checkpoint's own meta.json actually writes. See the comment on
+            # _SCALAR_VAL_METRIC_KEYS above for how this mismatch went unnoticed.
+            "pearsonR":     vm.get("pearson"),
+            "spearmanRho":  vm.get("spearman"),
+            "accuracy":     vm.get("accuracy"),
+            # Surfaced explicitly rather than left for someone to notice a number
+            # has no definition: this accuracy figure is a pass-through from the
+            # checkpoint's own training run, and its exact definition (accuracy
+            # at what threshold, of what classification) has not been confirmed
+            # by the model author.
+            "accuracyNote": vm.get("_note"),
             "note": "Validation metrics recorded in the loaded checkpoint" if vm
                     else "No validation metrics recorded in this checkpoint",
         },
