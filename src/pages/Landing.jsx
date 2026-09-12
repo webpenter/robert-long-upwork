@@ -55,11 +55,11 @@ export default function Landing() {
 
       <section className="hero">
         <div>
-          <h1>Which variant is more stable? hsFAST tells you &mdash; and tells you when it isn&rsquo;t sure.</h1>
+          <h1>Which variant is more stable? hsFAST tells you, and tells you when it isn&rsquo;t sure.</h1>
           <p className="sub">
             hsFAST predicts &Delta;G stability straight from an amino acid sequence with a fine-tuned
             protein language model, ranks every batch you submit against itself, and flags any
-            call that falls outside what the model actually saw in training &mdash; instead of handing
+            call that falls outside what the model actually saw in training, instead of handing
             back a confident-looking number regardless.
           </p>
           <div className="cta-row">
@@ -122,7 +122,7 @@ export default function Landing() {
           <div className="metric-tile">
             <span className="eyebrow">Spearman &rho;</span>
             <div className="figure mono">0.861</div>
-            <p className="note">Rank correlation &mdash; the figure the platform is built to optimise.</p>
+            <p className="note">Rank correlation: the figure the platform is built to optimise.</p>
           </div>
           <div className="metric-tile">
             <span className="eyebrow">Central-band MAE</span>
@@ -145,7 +145,7 @@ export default function Landing() {
           </p>
           <div className="problem-body">
             <p>
-              Most public thermostability corpora are broad and shallow &mdash; thousands of
+              Most public thermostability corpora are broad and shallow: thousands of
               <em> different</em> proteins, each measured once. They teach a model what separates a
               stable fold from an unstable one in general. They don&rsquo;t teach it to order twenty
               variants of <strong>your</strong> scaffold, which is the comparison your program
@@ -154,7 +154,7 @@ export default function Landing() {
             <p>
               hsFAST is built around that distinction. Every batch is ranked, not just scored,
               and once you have bench data, the platform measures ranking accuracy
-              <strong> within a single parent protein</strong> &mdash; not averaged across a pile of
+              <strong> within a single parent protein</strong>, not averaged across a pile of
               unrelated ones, where a real weakness can hide behind a good-looking overall number.
             </p>
           </div>
@@ -164,13 +164,13 @@ export default function Landing() {
       <section className="pipeline" id="pipeline">
         <div className="section-head">
           <span className="eyebrow">How a prediction is made</span>
-          <h2>Sequence in, ranked &Delta;G out &mdash; five steps, every time.</h2>
+          <h2>Sequence in, ranked &Delta;G out: five steps, every time.</h2>
         </div>
         <div className="pipeline-track">
           <div className="pipe-step">
             <span className="pipe-num">01</span>
             <h3>Sequence in</h3>
-            <p>Paste or upload FASTA &mdash; one sequence or a batch.</p>
+            <p>Paste or upload FASTA: one sequence or a batch.</p>
           </div>
           <div className="pipe-step">
             <span className="pipe-num">02</span>
@@ -198,11 +198,11 @@ export default function Landing() {
       <section className="batch-demo">
         <div className="section-head">
           <span className="eyebrow">What comes back</span>
-          <h2>Submit a batch, get a ranked chart &mdash; not just a spreadsheet of numbers.</h2>
+          <h2>Submit a batch, get a ranked chart, not just a spreadsheet of numbers.</h2>
         </div>
         <div className="batch-card">
           <div className="batch-card-head">
-            <h3>Ranked &Delta;G &mdash; example batch</h3>
+            <h3>Ranked &Delta;G (example batch)</h3>
             <div className="batch-legend">
               <span><span className="sw sw-stable" aria-hidden="true"></span>stable</span>
               <span><span className="sw sw-borderline" aria-hidden="true"></span>borderline</span>
@@ -250,7 +250,7 @@ export default function Landing() {
           <p className="batch-caption">
             Illustrative example, not live data. <strong>Rank</strong> orders the batch;
             the fusion construct is longer than anything in training, so it&rsquo;s flagged
-            even though the number itself looks unremarkable &mdash; exactly the kind of call
+            even though the number itself looks unremarkable. That&rsquo;s exactly the kind of call
             a plain table makes easy to miss and a chart makes hard to.
           </p>
         </div>
@@ -264,7 +264,7 @@ export default function Landing() {
         <div className="rigor-list">
           <div className="rigor-item">
             <div className="term">RANK<br />OVER RAW NUMBER</div>
-            <div className="desc"><p>Rank is the primary output, in the API and in every view. <span>The absolute &Delta;G is shown too, but it&rsquo;s the number more likely to shift as the model improves &mdash; the order has held far more consistently across model updates.</span></p></div>
+            <div className="desc"><p>Rank is the primary output, in the API and in every view. <span>The absolute &Delta;G is shown too, but it&rsquo;s the number more likely to shift as the model improves. The order has held far more consistently across model updates.</span></p></div>
           </div>
           <div className="rigor-item">
             <div className="term"><em>OUT-OF-RANGE</em> FLAGGING</div>
@@ -272,7 +272,7 @@ export default function Landing() {
           </div>
           <div className="rigor-item">
             <div className="term">MODEL<br />PROVENANCE</div>
-            <div className="desc"><p>Every result records the exact model version that produced it. <span>Comparing results from two different checkpoints is flagged &mdash; their numbers were never on the same scale to begin with.</span></p></div>
+            <div className="desc"><p>Every result records the exact model version that produced it. <span>Comparing results from two different checkpoints is flagged, since their numbers were never on the same scale to begin with.</span></p></div>
           </div>
           <div className="rigor-item">
             <div className="term">HEURISTIC<br />VS. LEARNED</div>
@@ -284,7 +284,7 @@ export default function Landing() {
       <section className="validation">
         <div className="validation-grid">
           <div className="chart-card">
-            <div className="chart-cap"><span>Predicted vs. measured &mdash; illustrative</span><span>rank order, not to scale</span></div>
+            <div className="chart-cap"><span>Predicted vs. measured (illustrative)</span><span>rank order, not to scale</span></div>
             <svg viewBox="0 0 420 250" role="img" aria-label="Illustrative scatter comparing predicted and measured stability rank for four example variants, showing close agreement">
               <line x1="46" y1="16" x2="46" y2="206" stroke="var(--line-strong)" strokeWidth="1"></line>
               <line x1="46" y1="206" x2="400" y2="206" stroke="var(--line-strong)" strokeWidth="1"></line>
@@ -310,7 +310,7 @@ export default function Landing() {
             <h2 style={{ marginTop: '12px' }}>Bring your own bench data. See exactly where the ranking held.</h2>
             <p>
               Once you log an experiment, the platform pairs every variant&rsquo;s prediction with its
-              measured result automatically &mdash; apparent Tm, half-life, or fold change &mdash; and
+              measured result automatically (apparent Tm, half-life, or fold change) and
               reports Spearman rank correlation, with a significance check appropriate to a small
               first panel rather than one built for a dataset ten times the size.
             </p>
@@ -326,7 +326,7 @@ export default function Landing() {
           <h2>See your own sequences ranked in the next five minutes.</h2>
           <div className="cta-side">
             <Link className="btn btn-primary" to="/register">Get started &rarr;</Link>
-            <span className="cta-note">Login required &mdash; ask your team lead for access.</span>
+            <span className="cta-note">Login required. Ask your team lead for access.</span>
           </div>
         </div>
       </section>
@@ -335,7 +335,7 @@ export default function Landing() {
         <div className="fmark">hsFAST</div>
         <p className="fine">
           hsFAST is a research platform for protein and enzyme stability prediction. Predictions
-          are a computational estimate for prioritising candidates &mdash; not a substitute for
+          are a computational estimate for prioritising candidates, not a substitute for
           experimental validation.
         </p>
       </footer>
