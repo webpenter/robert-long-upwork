@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
-  Brain, RefreshCw, AlertCircle, Cpu, Activity, Database,
-  BarChart2, Layers, Thermometer, FileWarning, CheckCircle2,
+  Brain, RefreshCw, AlertCircle, Activity, Database,
+  BarChart2, Layers, Thermometer,
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -69,7 +69,6 @@ function StatusDot({ online }) {
 
 export default function ModelManagement() {
   const [info,    setInfo]    = useState(null);
-  const [stats,   setStats]   = useState(null);
   const [error,   setError]   = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -77,14 +76,8 @@ export default function ModelManagement() {
     setLoading(true);
     setError(null);
     try {
-      // /model/info describes the loaded checkpoint; /dataset-stats adds the
-      // training corpus, when the checkpoint recorded one.
-      const [i, s] = await Promise.all([
-        api.get('/ml/info'),
-        api.get('/ml/dataset-stats').catch(() => null),
-      ]);
+      const i = await api.get('/ml/info');
       setInfo(i);
-      setStats(s);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -108,7 +101,6 @@ export default function ModelManagement() {
 
   const vm = info?.val_metrics ?? {};
   const online = !error && !!info;
-  const experimental = (info?.phase || '').includes('EXPERIMENTAL');
 
   // Validation metrics as reported by the loaded checkpoint. Correlations are on a
   // 0–1 scale; errors are in kcal/mol and get their own axis below.
@@ -122,8 +114,6 @@ export default function ModelManagement() {
     { name: 'Spearman ρ',  value: vm.spearman != null ? +Number(vm.spearman).toFixed(3) : null, fill: '#8b5cf6' },
     { name: 'Accuracy',    value: vm.accuracy != null ? +Number(vm.accuracy).toFixed(3) : null, fill: '#10b981' },
   ].filter(d => d.value != null);
-
-  const hasCorpus = stats && (stats.nTrainingSeqs != null || stats.trainingData != null);
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
@@ -167,17 +157,6 @@ export default function ModelManagement() {
               or the ML service alone with <code className="bg-red-100 px-1 py-0.5 rounded font-mono">npm run dev:ml</code>.
               The model takes ~20 s to load on first boot.
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Experimental banner ── */}
-      {experimental && (
-        <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl p-4">
-          <FileWarning className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
-          <div className="text-sm text-amber-800">
-            <div className="font-medium">Experimental checkpoint</div>
-            <p className="text-amber-700 mt-0.5 text-xs leading-relaxed">{info.phase}</p>
           </div>
         </div>
       )}
@@ -319,62 +298,6 @@ export default function ModelManagement() {
                 </div>
               )}
 
-              {/* Training corpus */}
-              <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-                <div className="flex items-center gap-2 mb-3">
-                  <Cpu className="w-4 h-4 text-gray-400" />
-                  <h3 className="font-semibold text-gray-900 text-sm">Training Data</h3>
-                </div>
-                {hasCorpus ? (
-                  <dl className="space-y-2.5 text-sm">
-                    {stats.nTrainingSeqs != null && (
-                      <div className="flex justify-between gap-2">
-                        <dt className="text-gray-500">Sequences</dt>
-                        <dd className="font-mono text-gray-800">{fmtInt(stats.nTrainingSeqs)}</dd>
-                      </div>
-                    )}
-                    {stats.splits && Object.entries(stats.splits).map(([k, v]) => (
-                      <div key={k} className="flex justify-between gap-2">
-                        <dt className="text-gray-500 capitalize">{k}</dt>
-                        <dd className="font-mono text-gray-800">{fmtInt(v)}</dd>
-                      </div>
-                    ))}
-                    {stats.trainingData && <p className="text-xs text-gray-500 pt-2 border-t border-gray-50 leading-relaxed">{stats.trainingData}</p>}
-                  </dl>
-                ) : (
-                  <div className="space-y-2">
-                    <p className="text-sm text-gray-600">Not recorded for this checkpoint.</p>
-                    <p className="text-xs text-gray-400 leading-relaxed">
-                      Training provenance cannot be recovered from the weights. Add a{' '}
-                      <code className="bg-gray-100 px-1 rounded font-mono">training_meta</code> block to the
-                      checkpoint or fill in{' '}
-                      <code className="bg-gray-100 px-1 rounded font-mono">models/best_model.pt.meta.json</code>{' '}
-                      and it will appear here. See <code className="bg-gray-100 px-1 rounded font-mono">ml-service/models/README.md</code>.
-                    </p>
-                  </div>
-                )}
-                {stats?.trainingMetaSource && (
-                  <p className="text-xs text-gray-300 mt-3 font-mono">source: {stats.trainingMetaSource}</p>
-                )}
-              </div>
-
-              {/* Swapping checkpoints */}
-              <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-                <div className="flex items-center gap-2 mb-2">
-                  <CheckCircle2 className="w-4 h-4 text-gray-400" />
-                  <h3 className="font-semibold text-gray-900 text-sm">Swapping the model</h3>
-                </div>
-                <p className="text-xs text-gray-500 leading-relaxed">
-                  The service detects the architecture from the checkpoint, so replacing{' '}
-                  <code className="bg-gray-100 px-1 rounded font-mono">ml-service/models/best_model.pt</code>{' '}
-                  is enough — no code change. To try another checkpoint without touching the default, set{' '}
-                  <code className="bg-gray-100 px-1 rounded font-mono">ML_CHECKPOINT_PATH</code> and restart{' '}
-                  <code className="bg-gray-100 px-1 rounded font-mono">npm run dev:ml</code>.
-                </p>
-                {stats?.checkpointPath && (
-                  <p className="text-xs text-gray-400 mt-2.5 font-mono break-all">{stats.checkpointPath}</p>
-                )}
-              </div>
             </div>
           </div>
         </>

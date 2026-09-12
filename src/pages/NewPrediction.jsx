@@ -240,22 +240,17 @@ export default function NewPrediction() {
       )}
 
       {/* Model info banner */}
-      <div className={`flex items-center gap-3 border rounded-xl px-4 py-3 mb-5 text-sm ${
-        modelInfo?.phase?.includes('EXPERIMENTAL') ? 'bg-amber-50 border-amber-200' : 'bg-blue-50 border-blue-200'
-      }`}>
-        <Zap className={`w-4 h-4 flex-shrink-0 ${modelInfo?.phase?.includes('EXPERIMENTAL') ? 'text-amber-600' : 'text-blue-600'}`} />
-        <div className={modelInfo?.phase?.includes('EXPERIMENTAL') ? 'text-amber-800' : 'text-blue-800'}>
+      <div className="flex items-center gap-3 border rounded-xl px-4 py-3 mb-5 text-sm bg-blue-50 border-blue-200">
+        <Zap className="w-4 h-4 flex-shrink-0 text-blue-600" />
+        <div className="text-blue-800">
           {modelInfo ? (
             <>
               <span className="font-semibold">{modelInfo.name}</span> — {modelInfo.architecture}.
               {' '}Trained on {modelInfo.training_data}.
               {modelInfo.val_metrics && (
-                <> Validation Pearson {modelInfo.val_metrics.pearson_r?.toFixed(2)} / Spearman {modelInfo.val_metrics.spearman_rho?.toFixed(2)}.</>
+                <> Validation Pearson {modelInfo.val_metrics.pearson?.toFixed(2)} / Spearman {modelInfo.val_metrics.spearman?.toFixed(2)}.</>
               )}
               {' '}Reads the first {modelInfo.max_len} residues.
-              {modelInfo.phase?.includes('EXPERIMENTAL') && (
-                <> <strong>Experimental model — not yet fully verified; outputs may be inconsistent.</strong></>
-              )}
             </>
           ) : (
             'Loading model info…'
