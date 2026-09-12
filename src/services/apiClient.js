@@ -20,7 +20,7 @@ function clearTokens() {
 let isRefreshing = false;
 let refreshQueue = [];
 
-async function refreshAccessToken() {
+async function refreshAccessToken({ silent = false } = {}) {
   const { refresh } = getTokens();
   if (!refresh) throw new Error('No refresh token');
 
@@ -32,7 +32,14 @@ async function refreshAccessToken() {
 
   if (!res.ok) {
     clearTokens();
-    window.location.href = '/login';
+    // Forcing a hard navigation here is right when a genuine mid-session call
+    // expires (the user is looking at an authenticated page that just broke),
+    // but wrong for a passive "is there already a session?" check made on
+    // every page load — including public ones. AuthContext's mount-time
+    // restore passes silent:true so a stale token from a previous session
+    // doesn't yank a visitor off a public route (e.g. the landing page) and
+    // straight to /login before they've done anything.
+    if (!silent) window.location.href = '/login';
     throw new Error('Session expired');
   }
 
@@ -43,26 +50,27 @@ async function refreshAccessToken() {
 
 async function request(path, options = {}) {
   const { access } = getTokens();
+  const { silent, ...fetchOptions } = options;
 
   const headers = {
     'Content-Type': 'application/json',
     ...(access ? { Authorization: `Bearer ${access}` } : {}),
-    ...options.headers,
+    ...fetchOptions.headers,
   };
 
-  let res = await fetch(`${BASE_URL}${path}`, { ...options, headers });
+  let res = await fetch(`${BASE_URL}${path}`, { ...fetchOptions, headers });
 
   // Auto-refresh on 401
   if (res.status === 401 && getTokens().refresh) {
     if (!isRefreshing) {
       isRefreshing = true;
       try {
-        const newToken = await refreshAccessToken();
+        const newToken = await refreshAccessToken({ silent });
         isRefreshing = false;
         refreshQueue.forEach((cb) => cb(newToken));
         refreshQueue = [];
         res = await fetch(`${BASE_URL}${path}`, {
-          ...options,
+          ...fetchOptions,
           headers: { ...headers, Authorization: `Bearer ${newToken}` },
         });
       } catch (err) {
@@ -74,7 +82,7 @@ async function request(path, options = {}) {
       // Wait for ongoing refresh
       const newToken = await new Promise((resolve) => refreshQueue.push(resolve));
       res = await fetch(`${BASE_URL}${path}`, {
-        ...options,
+        ...fetchOptions,
         headers: { ...headers, Authorization: `Bearer ${newToken}` },
       });
     }
@@ -95,7 +103,7 @@ async function request(path, options = {}) {
 }
 
 const api = {
-  get: (path) => request(path, { method: 'GET' }),
+  get: (path, opts) => request(path, { method: 'GET', ...opts }),
   post: (path, data) => request(path, { method: 'POST', body: JSON.stringify(data) }),
   patch: (path, data) => request(path, { method: 'PATCH', body: JSON.stringify(data) }),
   delete: (path) => request(path, { method: 'DELETE' }),

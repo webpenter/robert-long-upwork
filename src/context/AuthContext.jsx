@@ -14,7 +14,12 @@ export function AuthProvider({ children }) {
       setLoading(false);
       return;
     }
-    api.get('/auth/me')
+    // silent: true — this is a passive "is there already a session?" check
+    // that runs on every page load, public routes included. A stale token
+    // failing here is normal and shouldn't force a hard navigation to
+    // /login before the visitor has done anything; api.clearTokens() below
+    // already handles it correctly by just leaving them logged out.
+    api.get('/auth/me', { silent: true })
       .then(({ user }) => setUser(user))
       .catch(() => api.clearTokens())
       .finally(() => setLoading(false));
