@@ -1,6 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Download, Loader2, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Download, Loader2, ExternalLink, BarChart3, AlertTriangle } from 'lucide-react';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell, ResponsiveContainer, ReferenceLine,
+} from 'recharts';
 import api from '../services/apiClient';
 import { OutOfRangeBadge, ModelBadge, MixedModelWarning } from '../components/PredictionFlags';
 
@@ -10,6 +13,51 @@ function dgColor(dg) {
   if (dg <= -0.5) return '#16a34a';
   if (dg >=  0.5) return '#dc2626';
   return '#ca8a04';
+}
+
+// Y-axis label: sequence name, truncated, with a small warning glyph for any
+// prediction flagged as extrapolated — status has to travel with the tick label
+// itself, since colour alone (the bar's fill) already encodes stable/unstable
+// and can't also carry a second, unrelated signal. The axis plots by row id
+// (unique, so two identically-named sequences never collide into one bar);
+// this looks the display name back up from that id.
+function RankedAxisTick({ x, y, payload, byId, flagged }) {
+  const row = byId.get(payload.value);
+  if (!row) return null;
+  const isFlagged = flagged.has(payload.value);
+  return (
+    <g transform={`translate(${x},${y})`}>
+      {isFlagged && (
+        <text x={-8} y={4} textAnchor="end" fontSize="11" fill="#b45309">&#9888;</text>
+      )}
+      <text x={isFlagged ? -20 : -8} y={4} textAnchor="end" fontSize="12" fill="#4b5563">
+        {row.displayName}
+      </text>
+    </g>
+  );
+}
+
+function RankedTooltip({ active, payload }) {
+  if (!active || !payload?.length) return null;
+  const d = payload[0].payload;
+  return (
+    <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-2.5 text-xs max-w-[220px]">
+      <p className="font-semibold text-gray-900 truncate">{d.fullName}</p>
+      <p className="mt-1 text-gray-700">
+        Rank <span className="font-semibold">#{d.rank}</span> &middot; ΔG{' '}
+        <span className="font-mono font-semibold" style={{ color: dgColor(d.dG) }}>
+          {d.dG >= 0 ? '+' : ''}{d.dG.toFixed(2)}
+        </span> kcal/mol
+      </p>
+      {d.modelVersion && <p className="text-gray-400 mt-0.5 truncate">{d.modelVersion}</p>}
+      {d.inDistribution === false && (
+        <p className="text-amber-700 mt-1 flex items-start gap-1">
+          <AlertTriangle className="w-3 h-3 shrink-0 mt-0.5" />
+          Outside the model&rsquo;s training range &mdash; treat as extrapolation.
+        </p>
+      )}
+    </div>
+  );
 }
 
 export default function BatchResults() {
@@ -54,6 +102,31 @@ export default function BatchResults() {
 
   const name = (p) => p.fastaSequence?.split('\n')[0]?.replace('>', '').trim() || `Prediction ${String(p._id).slice(-6)}`;
 
+  // Chart mirrors the table's own rank order exactly — same rows, same order,
+  // just a second, faster-to-scan view of it. Only completed rows with a real
+  // ΔG plot; pending/failed ones have nothing to show yet. The row's own id
+  // becomes the category key (unique by construction) so two sequences that
+  // happen to share a header never collide into one bar; RankedAxisTick still
+  // displays the human-readable, truncated name.
+  const chartRows = sorted.filter(p => p.dG != null);
+  const chartData = useMemo(() => chartRows.map((p, i) => ({
+    id: p._id,
+    displayName: name(p).length > 22 ? `${name(p).slice(0, 21)}…` : name(p),
+    fullName: name(p),
+    dG: p.dG,
+    rank: i + 1,
+    modelVersion: p.modelVersion,
+    inDistribution: p.inDistribution,
+  })), [chartRows]);
+  const flaggedIds = useMemo(
+    () => new Set(chartData.filter(d => d.inDistribution === false).map(d => d.id)),
+    [chartData],
+  );
+  const chartById = useMemo(() => new Map(chartData.map(d => [d.id, d])), [chartData]);
+  // ~34px per bar reads clearly without feeling sparse; capped so a very large
+  // batch scrolls inside its own card rather than stretching the whole page.
+  const chartHeight = Math.min(560, Math.max(140, chartData.length * 34 + 40));
+
   // Rank is the primary output — only completed rows hold a place in the ordering,
   // so a pending or failed sequence never occupies a rank it hasn't earned.
   const rankOf = (p) => {
@@ -76,7 +149,7 @@ export default function BatchResults() {
   };
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-5">
+    <div className="p-6 max-w-5xl mx-auto space-y-5">
       <div className="flex items-center justify-between">
         <button onClick={() => navigate('/predict')}
           className="flex items-center gap-2 text-gray-500 hover:text-gray-700 text-sm">
@@ -104,6 +177,40 @@ export default function BatchResults() {
       </div>
 
       <MixedModelWarning predictions={sorted} action="Ranking" />
+
+      {chartData.length >= 2 && (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+          <div className="flex items-center gap-2 mb-1">
+            <BarChart3 className="w-4 h-4 text-gray-400" />
+            <h3 className="font-semibold text-gray-900 text-sm">Ranked ΔG</h3>
+          </div>
+          <p className="text-xs text-gray-400 mb-3">
+            Most stable at top. Green = stable, red = unstable, amber = borderline.
+            {flaggedIds.size > 0 && (
+              <span className="text-amber-700"> &#9888; marks a prediction outside the training range.</span>
+            )}
+          </p>
+          <ResponsiveContainer width="100%" height={chartHeight}>
+            <BarChart data={chartData} layout="vertical" margin={{ top: 4, right: 28, bottom: 4, left: 8 }}>
+              <CartesianGrid horizontal={false} stroke="#f1f5f9" />
+              <XAxis type="number" dataKey="dG" tick={{ fontSize: 11, fill: '#9ca3af' }}
+                label={{ value: '← more stable   ΔG (kcal/mol)   less stable →', position: 'insideBottom', offset: -2, style: { fontSize: 10.5, fill: '#9ca3af' } }} />
+              <YAxis type="category" dataKey="id" width={150}
+                tick={<RankedAxisTick byId={chartById} flagged={flaggedIds} />} />
+              <ReferenceLine x={0} stroke="#d1d5db" />
+              <Tooltip content={<RankedTooltip />} cursor={{ fill: '#f9fafb' }} />
+              <Bar dataKey="dG" radius={[0, 3, 3, 0]} maxBarSize={22}>
+                {chartData.map(d => (
+                  <Cell key={d.id} fill={dgColor(d.dG)}
+                    stroke={flaggedIds.has(d.id) ? '#b45309' : 'none'}
+                    strokeWidth={flaggedIds.has(d.id) ? 1.5 : 0}
+                    strokeDasharray={flaggedIds.has(d.id) ? '2 2' : undefined} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <table className="w-full text-sm">
