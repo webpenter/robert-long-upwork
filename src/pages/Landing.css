@@ -1,0 +1,367 @@
+/* =============================================================================
+   Landing page styles — everything here is scoped under .landing-page.
+
+   This is deliberately NOT written as Tailwind utilities like the rest of the
+   app. The marketing page and the authenticated app are different registers on
+   purpose (see the design rationale in design-mockups/landing-page.html, the
+   source this was built from), so it keeps its own small token system instead
+   of fighting Tailwind's.
+
+   Every selector below is scoped under .landing-page specifically because a
+   handful of them are bare-tag (body, h1, p, a, section, img, svg, footer) —
+   left unscoped, those would apply to every other route in this single-page
+   app, not just this one. .landing-page is the single top-level wrapper this
+   page renders (see Landing.jsx); nothing here reaches outside it.
+
+   Colour tokens are pulled from the app's own Tailwind palette (blue-600,
+   green-600/700, amber-700, red-600, the gray scale) rather than invented —
+   see the comments on each token below for the exact Tailwind name and where
+   else in the app that colour is used. Two WCAG contrast bugs were caught and
+   fixed here with a computed check, not an eyeball — see the two FIX comments.
+   ========================================================================== */
+
+.landing-page {
+  --paper:            #FFFFFF;
+  --paper-raised:     #FFFFFF;
+  --paper-sunken:     #F9FAFB;   /* gray-50 */
+  --paper-sunken-2:   #F3F4F6;   /* gray-100 */
+  --ink:              #111827;   /* gray-900 */
+  --ink-muted:        #4B5563;   /* gray-600 */
+  --ink-faint:        #6B7280;   /* gray-500 — 4.83:1 on white, verified */
+
+  --accent:           #2563EB;   /* blue-600 — the app's one brand/CTA colour */
+  --accent-fg:        #2563EB;   /* blue-600 as foreground text/links on light paper (5.17:1) */
+  --accent-hover:     #1D4ED8;   /* blue-700 */
+  --accent-ink:       #FFFFFF;
+  --accent-soft:      #EFF6FF;   /* blue-50 */
+  --accent-soft-line: #BFDBFE;   /* blue-200 */
+
+  --stable:           #16A34A;   /* green-600 — the app's own colour for a stable (negative) dG */
+  /* FIX: green-600 text directly on white is only 3.3:1. Badges use the app's
+     own two-tone pattern instead (soft bg + green-700 text, same as the
+     COMPLETED status pill), which clears AA at 4.57:1. */
+  --stable-text:      #15803D;   /* green-700 */
+  --stable-soft:      #F0FDF4;   /* green-50 */
+  --stable-line:      #BBF7D0;   /* green-200 */
+
+  --flag:             #B45309;   /* amber-700 — identical to OutOfRangeBadge's text-amber-700 */
+  --flag-soft:        #FFFBEB;   /* amber-50 */
+  --flag-line:        #FDE68A;   /* amber-200 */
+
+  --danger:           #DC2626;   /* red-600 — unstable / failed */
+
+  --line:             #E5E7EB;   /* gray-200 — plain dividers */
+  --line-strong:      #9CA3AF;   /* gray-400 — interactive control borders */
+
+  --shadow: 0 1px 2px rgba(17,24,39,.05), 0 10px 28px rgba(17,24,39,.08);
+  --radius-sm: 6px;
+  --radius-md: 10px;
+
+  --font-display: "STIX Two Text", "Iowan Old Style", Georgia, serif;
+  --font-body:    "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono:    "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  padding-inline: 24px;
+  min-height: 100vh;
+}
+
+/* This page does not follow the visitor's OS theme automatically — it always
+   opens light; dark is reached only through the header toggle, and the choice
+   is remembered per-browser in localStorage (see Landing.jsx). */
+.landing-page[data-theme-scope="dark"] {
+  --paper:            #0F172A;   /* slate-900 — the exact tone Sidebar.jsx already uses */
+  --paper-raised:     #1E293B;   /* slate-800 */
+  --paper-sunken:     #0B1220;
+  --paper-sunken-2:   #16202E;
+  --ink:              #F1F5F9;   /* slate-100 */
+  --ink-muted:        #94A3B8;   /* slate-400 — verbatim Sidebar.jsx's nav-text colour */
+  /* FIX: plain slate-500 (#64748B) only reaches 3.75:1 here. This clears
+     6.38:1 while still reading fainter than --ink-muted. */
+  --ink-faint:        #8B9CB3;
+
+  --accent:           #2563EB;
+  --accent-fg:        #60A5FA;   /* FIX: blue-500 as button text on dark is 3.68:1; blue-400 as foreground-on-dark text is 7.02:1 — buttons and text deliberately use different shades here */
+  --accent-hover:     #3B82F6;
+  --accent-ink:       #FFFFFF;
+  --accent-soft:      rgba(37,99,235,.16);
+  --accent-soft-line: rgba(96,165,250,.35);
+
+  --stable:           #4ADE80;
+  --stable-text:      #4ADE80;
+  --stable-soft:      rgba(74,222,128,.14);
+  --stable-line:      rgba(74,222,128,.35);
+
+  --flag:             #FBBF24;
+  --flag-soft:        rgba(251,191,36,.14);
+  --flag-line:        rgba(251,191,36,.35);
+
+  --danger:           #F87171;
+
+  --line:             #22303F;
+  --line-strong:      #48596E;
+
+  --shadow: 0 1px 2px rgba(0,0,0,.35), 0 14px 34px rgba(0,0,0,.4);
+}
+
+/* ============================= RESET (scoped) ============================= */
+.landing-page h1, .landing-page h2, .landing-page h3 {
+  font-family: var(--font-display); font-weight: 500; text-wrap: balance; margin: 0; color: var(--ink);
+}
+.landing-page p { margin: 0; }
+.landing-page a { color: inherit; }
+.landing-page .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.landing-page .eyebrow {
+  font-family: var(--font-mono); font-size: .72rem; font-weight: 500;
+  letter-spacing: .11em; text-transform: uppercase; color: var(--ink-faint);
+}
+.landing-page section { max-width: 1120px; margin-inline: auto; }
+.landing-page img, .landing-page svg { max-width: 100%; }
+.landing-page ::selection { background: var(--accent); color: var(--accent-ink); }
+.landing-page a:focus-visible, .landing-page button:focus-visible {
+  outline: 2px solid var(--accent-fg); outline-offset: 2px; border-radius: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .landing-page * { transition: none !important; animation: none !important; }
+}
+
+/* ============================= HEADER ============================= */
+.landing-page .site-header {
+  max-width: 1120px; margin-inline: auto;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding-block: 20px; border-bottom: 1px solid var(--line);
+}
+.landing-page .wordmark {
+  font-family: var(--font-display); font-size: 1.28rem; font-weight: 600;
+  letter-spacing: .01em; display: flex; align-items: baseline; gap: .5em; color: var(--ink);
+}
+.landing-page .wordmark .tag {
+  font-family: var(--font-mono); font-size: .62rem; font-weight: 500; letter-spacing: .09em;
+  color: var(--ink-faint); text-transform: uppercase; border: 1px solid var(--line);
+  border-radius: 999px; padding: .22em .68em;
+}
+.landing-page .header-actions { display: flex; align-items: center; gap: 18px; }
+.landing-page .header-links { display: flex; align-items: center; gap: 18px; }
+.landing-page .link-quiet { font-size: .92rem; font-weight: 500; text-decoration: none; color: var(--ink-muted); }
+.landing-page .link-quiet:hover { color: var(--ink); }
+
+.landing-page .btn {
+  display: inline-flex; align-items: center; gap: .5em;
+  font-family: var(--font-body); font-weight: 600; font-size: .92rem;
+  padding: .7em 1.25em; border-radius: var(--radius-sm); text-decoration: none;
+  border: 1px solid transparent; cursor: pointer; white-space: nowrap;
+  transition: background-color .15s ease, border-color .15s ease, transform .15s ease;
+}
+.landing-page .btn-primary { background: var(--accent); color: var(--accent-ink); }
+.landing-page .btn-primary:hover { background: var(--accent-hover); transform: translateY(-1px); }
+.landing-page .btn-ghost { background: transparent; color: var(--ink); border-color: var(--line-strong); }
+.landing-page .btn-ghost:hover { border-color: var(--ink-muted); }
+
+.landing-page .theme-toggle {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px; flex-shrink: 0; padding: 0;
+  border-radius: var(--radius-sm); border: 1px solid var(--line-strong);
+  background: var(--paper-raised); color: var(--ink-muted); cursor: pointer;
+  transition: border-color .15s ease, color .15s ease;
+}
+.landing-page .theme-toggle:hover { color: var(--ink); border-color: var(--ink-muted); }
+
+/* ============================= HERO ============================= */
+.landing-page .hero { display: grid; grid-template-columns: 1.05fr .95fr; gap: 56px; align-items: center; padding-block: 68px 56px; }
+.landing-page .hero h1 { font-size: clamp(1.9rem, 1.35rem + 2.2vw, 2.9rem); line-height: 1.14; letter-spacing: -.008em; }
+.landing-page .hero .sub { margin-top: 22px; max-width: 52ch; color: var(--ink-muted); font-size: 1.06rem; line-height: 1.62; }
+.landing-page .hero .cta-row { margin-top: 30px; display: flex; align-items: center; gap: 22px; flex-wrap: wrap; }
+
+.landing-page .readout { background: var(--paper-raised); border: 1px solid var(--line); border-radius: var(--radius-md); box-shadow: var(--shadow); overflow: hidden; }
+.landing-page .readout-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 14px 18px; border-bottom: 1px solid var(--line); background: var(--paper-sunken);
+}
+.landing-page .readout-head .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--stable); display: inline-block; margin-right: .55em; flex-shrink: 0; }
+.landing-page .readout-body { padding: 20px 18px 22px; }
+.landing-page .seq {
+  font-family: var(--font-mono); font-size: .86rem; line-height: 1.65; word-break: break-all;
+  color: var(--ink-muted); background: var(--paper-sunken); border: 1px solid var(--line);
+  border-radius: var(--radius-sm); padding: 12px 14px;
+}
+.landing-page .seq b { color: var(--ink); font-weight: 500; }
+.landing-page .readout-grid {
+  margin-top: 16px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1px;
+  background: var(--line); border: 1px solid var(--line); border-radius: var(--radius-sm); overflow: hidden;
+}
+.landing-page .readout-cell { background: var(--paper-raised); padding: 12px 14px; }
+.landing-page .readout-cell .k { font-family: var(--font-mono); font-size: .66rem; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-faint); }
+.landing-page .readout-cell .v { margin-top: 5px; font-family: var(--font-mono); font-size: 1.05rem; color: var(--ink); }
+.landing-page .readout-cell .v.stable { color: var(--stable); font-weight: 600; }
+.landing-page .pill {
+  display: inline-flex; align-items: center; gap: .4em; font-family: var(--font-mono);
+  font-size: .68rem; letter-spacing: .05em; text-transform: uppercase; font-weight: 600;
+  padding: .32em .68em; border-radius: 999px; border: 1px solid;
+}
+.landing-page .pill-stable { background: var(--stable-soft); border-color: var(--stable-line); color: var(--stable-text); }
+.landing-page .pill-rank { background: var(--stable-soft); border-color: var(--stable-line); color: var(--stable-text); }
+.landing-page .readout-foot {
+  margin-top: 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  font-family: var(--font-mono); font-size: .72rem; color: var(--ink-faint);
+}
+
+.landing-page .seq-rule { display: block; width: 100%; max-width: 1120px; height: 22px; margin: 0 auto; opacity: .6; }
+
+/* ============================= METRICS STRIP ============================= */
+.landing-page .metrics { padding-block: 44px 0; border-top: 1px solid var(--line); }
+.landing-page .metrics-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  border: 1px solid var(--line); border-radius: var(--radius-md); overflow: hidden;
+  background: var(--line); gap: 1px;
+}
+.landing-page .metric-tile { background: var(--paper-raised); padding: 22px 22px 20px; }
+.landing-page .metric-tile .eyebrow { margin-bottom: 10px; }
+.landing-page .metric-tile .figure { font-family: var(--font-mono); font-size: 2rem; font-weight: 500; color: var(--ink); line-height: 1; }
+.landing-page .metric-tile .figure small { font-size: 1rem; color: var(--ink-faint); font-weight: 400; margin-left: .15em; }
+.landing-page .metric-tile .note { margin-top: 8px; font-size: .86rem; color: var(--ink-muted); line-height: 1.45; }
+
+/* ============================= SECTION HEADING ============================= */
+.landing-page .section-head { max-width: 640px; margin-bottom: 40px; }
+.landing-page .section-head h2 { font-size: clamp(1.5rem, 1.2rem + 1vw, 2rem); line-height: 1.22; }
+.landing-page .section-head .eyebrow { display: block; margin-bottom: 12px; }
+
+/* ============================= PROBLEM / PULLQUOTE ============================= */
+.landing-page .problem { padding-block: 70px; border-top: 1px solid var(--line); }
+.landing-page .problem-grid { display: grid; grid-template-columns: .85fr 1.15fr; gap: 56px; align-items: start; }
+.landing-page .pullquote {
+  font-family: var(--font-display); font-style: italic; font-weight: 500;
+  font-size: clamp(1.3rem, 1.05rem + 1vw, 1.7rem); line-height: 1.42; color: var(--ink);
+  border-left: 3px solid var(--accent); padding-left: 24px;
+}
+.landing-page .problem-body p { color: var(--ink-muted); font-size: 1.02rem; }
+.landing-page .problem-body p + p { margin-top: 16px; }
+.landing-page .problem-body strong { color: var(--ink); font-weight: 600; }
+
+/* ============================= PIPELINE ============================= */
+.landing-page .pipeline { padding-block: 70px; border-top: 1px solid var(--line); }
+.landing-page .pipeline-track { display: grid; grid-template-columns: repeat(5,1fr); gap: 0; border-top: 1px solid var(--line-strong); position: relative; }
+.landing-page .pipe-step { padding: 22px 18px 0; border-left: 1px solid var(--line); display: flex; flex-direction: column; gap: 10px; }
+.landing-page .pipe-step:first-child { border-left: none; }
+.landing-page .pipe-num {
+  font-family: var(--font-mono); font-size: .78rem; color: var(--accent-fg); font-weight: 600;
+  margin-top: -11px; background: var(--paper); width: fit-content; padding-right: 8px;
+}
+.landing-page .pipe-step h3 { font-size: .98rem; font-weight: 600; font-family: var(--font-body); line-height: 1.35; color: var(--ink); }
+.landing-page .pipe-step p { font-size: .87rem; color: var(--ink-muted); line-height: 1.5; }
+
+/* ============================= BATCH RESULTS DEMO ============================= */
+.landing-page .batch-demo { padding-block: 70px; border-top: 1px solid var(--line); }
+.landing-page .batch-card { background: var(--paper-raised); border: 1px solid var(--line); border-radius: var(--radius-md); box-shadow: var(--shadow); padding: 26px 26px 22px; }
+.landing-page .batch-card-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.landing-page .batch-card-head h3 { font-family: var(--font-body); font-size: 1rem; font-weight: 600; color: var(--ink); }
+.landing-page .batch-legend { display: flex; gap: 16px; flex-wrap: wrap; font-family: var(--font-mono); font-size: .72rem; color: var(--ink-muted); }
+.landing-page .batch-legend .sw { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: .45em; vertical-align: middle; }
+.landing-page .sw-stable { background: var(--stable); }
+.landing-page .sw-unstable { background: var(--danger); }
+.landing-page .sw-borderline { background: #ca8a04; }
+.landing-page .batch-rows { margin-top: 24px; display: flex; flex-direction: column; gap: 15px; }
+.landing-page .batch-row { display: grid; grid-template-columns: 172px 1fr 78px; align-items: center; gap: 14px; }
+.landing-page .batch-row-name { font-size: .86rem; font-weight: 500; color: var(--ink); display: block; line-height: 1.3; }
+.landing-page .batch-row-rank { font-family: var(--font-mono); font-size: .68rem; color: var(--ink-faint); }
+.landing-page .batch-row-flag { display: inline-flex; align-items: center; gap: .3em; font-family: var(--font-mono); font-size: .66rem; color: var(--flag); margin-top: 1px; }
+.landing-page .batch-row-track { position: relative; height: 22px; background: var(--paper-sunken); border-radius: 4px; overflow: visible; }
+.landing-page .batch-row-zero { position: absolute; left: 50%; top: -3px; bottom: -3px; width: 1px; background: var(--line-strong); }
+.landing-page .batch-row-bar { position: absolute; top: 2px; bottom: 2px; border-radius: 3px; }
+.landing-page .batch-row-bar.stable { background: var(--stable); }
+.landing-page .batch-row-bar.unstable { background: var(--danger); }
+.landing-page .batch-row-bar.borderline { background: #ca8a04; }
+.landing-page .batch-row-bar.flagged { outline: 1.5px dashed var(--flag); outline-offset: 1px; }
+.landing-page .batch-row-value { font-family: var(--font-mono); font-size: .86rem; font-weight: 600; text-align: right; }
+.landing-page .batch-row-value.stable { color: var(--stable); }
+.landing-page .batch-row-value.unstable { color: var(--danger); }
+.landing-page .batch-row-value.borderline { color: #a16207; }
+.landing-page .batch-axis { display: grid; grid-template-columns: 172px 1fr 78px; gap: 14px; margin-top: 8px; }
+.landing-page .batch-axis-track { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: .68rem; color: var(--ink-faint); }
+.landing-page .batch-caption { margin-top: 18px; font-size: .82rem; color: var(--ink-faint); line-height: 1.5; }
+.landing-page .batch-caption strong { color: var(--ink-muted); font-weight: 600; }
+@media (max-width: 480px) {
+  .landing-page .batch-row { grid-template-columns: 1fr; gap: 6px; }
+  .landing-page .batch-row-track { order: 2; }
+  .landing-page .batch-row-value { order: 3; text-align: left; }
+  .landing-page .batch-axis { grid-template-columns: 1fr; }
+  .landing-page .batch-axis-track { display: none; }
+}
+
+/* ============================= RIGOR LIST ============================= */
+.landing-page .rigor { padding-block: 70px; border-top: 1px solid var(--line); }
+.landing-page .rigor-list { display: flex; flex-direction: column; }
+.landing-page .rigor-item { display: grid; grid-template-columns: 200px 1fr; gap: 32px; padding-block: 26px; border-top: 1px solid var(--line); }
+.landing-page .rigor-list .rigor-item:last-child { border-bottom: 1px solid var(--line); }
+.landing-page .rigor-item .term { font-family: var(--font-mono); font-size: .78rem; letter-spacing: .03em; color: var(--ink-faint); padding-top: .2em; }
+.landing-page .rigor-item .term em { color: var(--flag); font-style: normal; }
+.landing-page .rigor-item .desc p { font-size: 1.02rem; color: var(--ink); max-width: 62ch; line-height: 1.55; }
+.landing-page .rigor-item .desc span { color: var(--ink-muted); }
+.landing-page .rigor-item .desc em { color: var(--flag); font-style: normal; font-weight: 600; }
+
+/* ============================= VALIDATION CHART ============================= */
+.landing-page .validation { padding-block: 70px; border-top: 1px solid var(--line); }
+.landing-page .validation-grid { display: grid; grid-template-columns: .95fr 1.05fr; gap: 56px; align-items: center; }
+.landing-page .chart-card { background: var(--paper-raised); border: 1px solid var(--line); border-radius: var(--radius-md); padding: 22px 22px 18px; box-shadow: var(--shadow); }
+.landing-page .chart-card .chart-cap {
+  font-family: var(--font-mono); font-size: .7rem; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--ink-faint); margin-bottom: 14px; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+}
+.landing-page .chart-note { margin-top: 10px; font-size: .78rem; color: var(--ink-faint); line-height: 1.5; }
+.landing-page .chart-note strong { color: var(--ink-muted); font-weight: 600; }
+.landing-page .validation-body p { color: var(--ink-muted); font-size: 1.02rem; line-height: 1.62; }
+.landing-page .validation-body p + p { margin-top: 14px; }
+
+/* ============================= CTA BAND ============================= */
+.landing-page .cta-band {
+  margin-top: 70px; padding: 52px 48px; border-radius: var(--radius-md);
+  background: var(--paper-sunken); border: 1px solid var(--line);
+  display: flex; align-items: center; justify-content: space-between; gap: 32px; flex-wrap: wrap;
+}
+.landing-page .cta-band h2 { font-size: 1.5rem; max-width: 26ch; }
+.landing-page .cta-band .cta-side { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+.landing-page .cta-note { font-size: .86rem; color: var(--ink-faint); max-width: 24ch; }
+
+/* ============================= FOOTER ============================= */
+.landing-page footer {
+  max-width: 1120px; margin: 70px auto 0; padding-block: 26px 40px;
+  border-top: 1px solid var(--line);
+  display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+}
+.landing-page footer .fine { font-size: .82rem; color: var(--ink-faint); max-width: 56ch; line-height: 1.5; }
+.landing-page footer .fmark { font-family: var(--font-display); font-size: 1rem; font-weight: 600; color: var(--ink); }
+
+/* ============================= RESPONSIVE ============================= */
+@media (max-width: 960px) {
+  .landing-page .metrics-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 900px) {
+  .landing-page .hero { grid-template-columns: 1fr; gap: 40px; padding-block: 44px 40px; }
+  .landing-page .problem-grid, .landing-page .validation-grid { grid-template-columns: 1fr; gap: 32px; }
+  .landing-page .pullquote { border-left: none; border-top: 3px solid var(--accent); padding-left: 0; padding-top: 18px; }
+  .landing-page .pipeline-track { grid-template-columns: 1fr 1fr; border-top: none; }
+  .landing-page .pipe-step { border-left: none; border-top: 1px solid var(--line); padding-top: 20px; }
+  .landing-page .rigor-item { grid-template-columns: 1fr; gap: 8px; }
+  .landing-page .cta-band { padding: 36px 28px; }
+  .landing-page .header-links { display: none; }
+}
+@media (max-width: 600px) {
+  .landing-page { padding-inline: 16px; }
+  .landing-page .site-header { padding-block: 16px; gap: 10px; }
+  .landing-page .wordmark .tag { display: none; }
+  .landing-page .metrics-grid { grid-template-columns: 1fr 1fr; }
+  .landing-page .metric-tile .figure { font-size: 1.6rem; }
+  .landing-page .pipeline-track { grid-template-columns: 1fr; }
+  .landing-page .readout-grid { grid-template-columns: 1fr 1fr; }
+  .landing-page .readout-grid .readout-cell:last-child { grid-column: 1 / -1; }
+  .landing-page .cta-band { flex-direction: column; align-items: flex-start; }
+  .landing-page .btn { padding: .68em 1em; font-size: .88rem; }
+}
+@media (max-width: 420px) {
+  .landing-page .metrics-grid { grid-template-columns: 1fr; }
+  .landing-page .header-actions { gap: 10px; }
+}
