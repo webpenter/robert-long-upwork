@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "concurrently --names \"ml,api,web\" --prefix-colors \"magenta.bold,cyan.bold,green.bold\" --handle-input \"npm:dev:ml\" \"npm:dev:api\" \"npm:dev:web\"",
-    "dev:ml": "python -m uvicorn main:app --app-dir ml-service --host 127.0.0.1 --port 8000",
+    "dev:ml": "python -u -m uvicorn main:app --app-dir ml-service --host 127.0.0.1 --port 8000",
     "dev:api": "npm --prefix backend run dev",
     "dev:web": "vite",
     "setup": "npm install && npm --prefix backend install && pip install -r ml-service/requirements.txt",

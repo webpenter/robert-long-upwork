@@ -73,7 +73,11 @@ function ModelStatusCard({ ml, loading }) {
         { label: 'Model',         value: ml.name,                                       mono: true  },
         { label: 'Type',          value: ml.model_type,                                 mono: true  },
         { label: 'Parameters',    value: ml.parameters?.toLocaleString?.() ?? ml.parameters, mono: false },
-        { label: 'Pearson r',     value: num3(vm.pearson_r),                            mono: true  },
+        // Keys match what /model/info actually returns ("pearson"/"spearman",
+        // no suffix) — see _SCALAR_VAL_METRIC_KEYS in ml-service/main.py.
+        { label: 'Pearson r',     value: num3(vm.pearson),                              mono: true  },
+        { label: 'Spearman ρ',    value: num3(vm.spearman),                             mono: true  },
+        { label: 'MAE',           value: num3(vm.mae),                                  mono: true  },
         { label: 'RMSE',          value: num3(vm.rmse),                                 mono: true  },
         { label: 'Training data', value: ml.training_data,                              mono: false },
       ]
@@ -122,8 +126,10 @@ function ModelStatusCard({ ml, loading }) {
       ) : (
         <div className="flex-1 flex flex-col items-center justify-center py-4 text-center space-y-2">
           <WifiOff className="w-8 h-8 text-gray-200" />
-          <p className="text-sm font-medium text-gray-700">ML service offline</p>
-          <p className="text-xs text-gray-400">Predictions fall back to BLOSUM62 scoring</p>
+          <p className="text-sm font-medium text-gray-700">ML service not reachable</p>
+          <p className="text-xs text-gray-400">
+            Re-checking every 5 s. If it was just started, the model takes about a minute to load.
+          </p>
         </div>
       )}
     </div>
@@ -340,6 +346,18 @@ export default function Dashboard() {
 
   const counts = stats?.counts   ?? {};
   const ml     = stats?.mlService ?? {};
+
+  // The ML service refuses connections for the ~60 s it takes to load the
+  // 727 MB checkpoint, so a dashboard opened while `npm run dev` is still
+  // starting sees it as offline. A one-shot fetch would then show "Offline"
+  // until the user thought to refresh. Keep re-checking until the model is
+  // actually ready; stop once it is.
+  const mlReady = !!(ml.online && ml.modelReady);
+  useEffect(() => {
+    if (loading || mlReady) return;
+    const timer = setInterval(load, 5000);
+    return () => clearInterval(timer);
+  }, [loading, mlReady, load]);
   const firstName = user?.name?.split(' ')[0] ?? 'there';
 
   const assayData = Object.entries(stats?.assayBreakdown ?? {}).map(([type, count]) => ({
