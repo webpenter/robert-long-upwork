@@ -1,6 +1,7 @@
 {
   "_comment": [
     "Training provenance for best_model.pt (ESM2-150M + LoRA r32 + temperature/pH gating).",
+    "UPDATED 2026-09-16: numbers below are for the re-delivered checkpoint (sha256 4eebaa9a…, file received as region_aware_best_model.pt). Same experiment, epoch and configuration as the previous file; backbone identical, only LoRA/gate/projector/head weights differ (max |delta| 0.023). Previous file kept as best_model_expert1_ep2_backup_20260916.pt (sha256 3b7c8019…).",
     "Served by GET /dataset/stats. Most fields below are now REAL, read out of the",
     "checkpoint itself, which carries experiment/epoch/val_metrics/region_metrics/",
     "length_metrics/configuration keys. Fields still null or UNCONFIRMED are awaiting the",
@@ -18,11 +19,11 @@
   "epoch": 2,
   "val_metrics": {
     "n": 40146,
-    "mae": 0.6873,
-    "rmse": 1.0286,
-    "pearson": 0.8581,
-    "spearman": 0.8607,
-    "accuracy": 0.8465,
+    "mae": 0.6662,
+    "rmse": 1.0069,
+    "pearson": 0.8646,
+    "spearman": 0.8681,
+    "accuracy": 0.8541,
     "_note": "accuracy definition not yet supplied by the model author"
   },
   "region_metrics": [
@@ -30,25 +31,31 @@
       "band": "dG -6.205 .. 0.066",
       "actually": "least stable",
       "n": 17964,
-      "mae": 0.8032,
-      "rmse": 1.1215,
-      "train_weight": 1.5
+      "mae": 0.7835,
+      "rmse": 1.103,
+      "train_weight": 1.5,
+      "bias": 0.3634,
+      "_bias_note": "mean(pred - target) in raw units; new in this checkpoint"
     },
     {
       "band": "dG  0.067 .. 2.990",
       "actually": "central",
       "n": 18867,
-      "mae": 0.4836,
-      "rmse": 0.6993,
-      "train_weight": 1.0
+      "mae": 0.4678,
+      "rmse": 0.6881,
+      "train_weight": 1.0,
+      "bias": -0.1145,
+      "_bias_note": "mean(pred - target) in raw units; new in this checkpoint"
     },
     {
       "band": "dG  2.992 .. 9.773",
       "actually": "most stable",
       "n": 3315,
-      "mae": 1.2186,
-      "rmse": 1.7927,
-      "train_weight": 1.15
+      "mae": 1.1596,
+      "rmse": 1.7291,
+      "train_weight": 1.15,
+      "bias": -0.8923,
+      "_bias_note": "mean(pred - target) in raw units; new in this checkpoint"
     }
   ],
   "length_metrics": [
@@ -113,5 +120,6 @@
     "evidence": "Restoring SiLU: output span over 32 real sequences 39.10 -> 16.49 (labels 15.98); GB1 wild-type 11.11 -> 6.32 (literature ~5-6 kcal/mol); out-of-label-range predictions 12/32 -> 5/32. Same behaviour on both the epoch-4 and expert1 checkpoints.",
     "ranking_impact": "none - Spearman +0.9993 vs without. SiLU turns at x=-1.278 and the projector's minimum output is -1.146, so it is monotonic across the range in use.",
     "revert": "delete nn.SiLU() from protein_projector in ml-service/esm2_gated_model.py"
-  }
+  },
+  "length_metrics_note": "length_metrics were recorded in the previous checkpoint only; the 2026-09-16 file does not carry them. Values below are from the previous file and are indicative, not measured on this checkpoint."
 }

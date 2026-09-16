@@ -78,7 +78,7 @@ export default function Landing() {
             <div className="readout-grid">
               <div className="readout-cell">
                 <div className="k">&Delta;G, kcal/mol</div>
-                <div className="v stable">&minus;6.32</div>
+                <div className="v stable">&minus;7.37</div>
               </div>
               <div className="readout-cell">
                 <div className="k">Rank</div>
@@ -116,17 +116,17 @@ export default function Landing() {
         <div className="metrics-grid">
           <div className="metric-tile">
             <span className="eyebrow">Mean absolute error</span>
-            <div className="figure mono">0.687<small>kcal/mol</small></div>
+            <div className="figure mono">0.666<small>kcal/mol</small></div>
             <p className="note">Across the full validation set, region-weighted training.</p>
           </div>
           <div className="metric-tile">
             <span className="eyebrow">Spearman &rho;</span>
-            <div className="figure mono">0.861</div>
+            <div className="figure mono">0.868</div>
             <p className="note">Rank correlation: the figure the platform is built to optimise.</p>
           </div>
           <div className="metric-tile">
             <span className="eyebrow">Central-band MAE</span>
-            <div className="figure mono">0.48<small>kcal/mol</small></div>
+            <div className="figure mono">0.47<small>kcal/mol</small></div>
             <p className="note">Where most engineered variants actually sit.</p>
           </div>
           <div className="metric-tile">
@@ -213,8 +213,8 @@ export default function Landing() {
           <div className="batch-rows">
             <div className="batch-row">
               <span className="batch-row-name">GB1 wild type<span className="batch-row-rank"> &middot; Rank 1</span></span>
-              <div className="batch-row-track"><div className="batch-row-zero"></div><div className="batch-row-bar stable" style={{ left: '18.4%', width: '31.6%' }}></div></div>
-              <span className="batch-row-value stable">&minus;6.32</span>
+              <div className="batch-row-track"><div className="batch-row-zero"></div><div className="batch-row-bar stable" style={{ left: '13.2%', width: '36.8%' }}></div></div>
+              <span className="batch-row-value stable">&minus;7.37</span>
             </div>
             <div className="batch-row">
               <span className="batch-row-name">designed variant<span className="batch-row-rank"> &middot; Rank 2</span></span>

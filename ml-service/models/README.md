@@ -8,7 +8,8 @@ so dropping in a different `.pt` is enough — no code change required.
 
 | Checkpoint | Architecture | Trainable params | Validation |
 |---|---|---|---|
-| `best_model.pt` (active) | ESM2-150M + LoRA r32 + temperature/pH gating | 11,147,649 | MAE 0.978 · RMSE 1.407 · Pearson 0.742 · Spearman 0.710 |
+| `best_model.pt` (active, `expert1_region_aware` ep2, re-delivered 2026-09-16) | ESM2-150M + LoRA r32 + temperature/pH gating | 11,147,649 | MAE 0.666 · RMSE 1.007 · Pearson 0.865 · Spearman 0.868 (n=40,146) |
+| `best_model_expert1_ep2_backup_20260916.pt` | same, previous delivery | 11,147,649 | MAE 0.687 · RMSE 1.029 · Pearson 0.858 · Spearman 0.861 |
 | `best_model_r16_backup.pt` | ESM2-35M + LoRA r16 | 693,569 | MAE 1.090 · RMSE 1.665 · Pearson 0.750 · Spearman 0.806 |
 
 ## Recording training provenance
