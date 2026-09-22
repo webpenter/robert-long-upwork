@@ -8,6 +8,7 @@ import {
 } from 'recharts';
 import api from '../services/apiClient';
 import { ModelBadge } from '../components/PredictionFlags';
+import { modelLabel } from '../services/modelLabel';
 
 const METRICS = [
   { key: 'apparent_tm', label: 'Apparent Tm' },
@@ -166,7 +167,7 @@ export default function PredictedVsMeasured() {
       `"${(r.name || '').replace(/"/g, '""')}"`,
       `"${(r.mutations || []).join(' ')}"`,
       r.predictedDg, r.measured, r.measuredSd ?? '', r.unit, r.nReplicates,
-      r.modelVersion || '', r.inDistribution,
+      modelLabel(r.modelVersion), r.inDistribution,
     ].join(','));
     const blob = new Blob([[header, ...body].join('\n')], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);

@@ -175,7 +175,7 @@ export default function NewPrediction() {
           </h2>
           <p className="text-gray-500 text-sm mb-6">
             {progress < 40  ? 'Tokenizing sequence...' :
-             progress < 70  ? 'Running ESM2 inference...' :
+             progress < 70  ? 'Running inference...' :
              progress < 95  ? 'Computing ΔG...' :
              progress < 100 ? 'Saving results...' : 'Redirecting...'}
           </p>
@@ -190,7 +190,7 @@ export default function NewPrediction() {
           <div className="mt-8 grid grid-cols-3 gap-3 max-w-xs mx-auto text-xs">
             {[
               { label: 'Tokenize', done: progress > 30 },
-              { label: 'ESM2 Inference', done: progress > 65 },
+              { label: 'Inference', done: progress > 65 },
               { label: 'ΔG', done: progress > 90 },
             ].map(({ label, done }) => (
               <div key={label} className="bg-gray-50 rounded-lg p-3 text-center">
@@ -216,7 +216,6 @@ export default function NewPrediction() {
         <h1 className="text-2xl font-bold text-gray-900">Stability Prediction</h1>
         <p className="text-gray-500 text-sm mt-1">
           Predict thermodynamic stability (ΔG kcal/mol) from protein sequence
-          {modelInfo?.name ? ` using ${modelInfo.name}` : ''}
         </p>
       </div>
 
@@ -238,25 +237,6 @@ export default function NewPrediction() {
           </div>
         </div>
       )}
-
-      {/* Model info banner */}
-      <div className="flex items-center gap-3 border rounded-xl px-4 py-3 mb-5 text-sm bg-blue-50 border-blue-200">
-        <Zap className="w-4 h-4 flex-shrink-0 text-blue-600" />
-        <div className="text-blue-800">
-          {modelInfo ? (
-            <>
-              <span className="font-semibold">{modelInfo.name}</span> — {modelInfo.architecture}.
-              {' '}Trained on {modelInfo.training_data}.
-              {modelInfo.val_metrics && (
-                <> Validation Pearson {modelInfo.val_metrics.pearson?.toFixed(2)} / Spearman {modelInfo.val_metrics.spearman?.toFixed(2)}.</>
-              )}
-              {' '}Reads the first {modelInfo.max_len} residues.
-            </>
-          ) : (
-            'Loading model info…'
-          )}
-        </div>
-      </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 space-y-5">
         <div className="flex items-center gap-3">

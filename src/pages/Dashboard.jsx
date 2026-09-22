@@ -79,7 +79,9 @@ function ModelStatusCard({ ml, loading }) {
         { label: 'Spearman ρ',    value: num3(vm.spearman),                             mono: true  },
         { label: 'MAE',           value: num3(vm.mae),                                  mono: true  },
         { label: 'RMSE',          value: num3(vm.rmse),                                 mono: true  },
-        { label: 'Training data', value: ml.training_data,                              mono: false },
+        // Accuracy is a pass-through from the checkpoint's own training log; its
+        // definition is still unconfirmed by the model author (see ml-questions.md).
+        { label: 'Accuracy',      value: vm.accuracy != null ? `${(vm.accuracy * 100).toFixed(1)}%` : null, mono: true },
       ]
     : [];
 
@@ -109,12 +111,6 @@ function ModelStatusCard({ ml, loading }) {
                 </span>
               </div>
             ))}
-          </div>
-          <div className="mt-4 flex items-center gap-2 px-3 py-2 bg-green-50 rounded-lg">
-            <CheckCircle2 className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />
-            <span className="text-xs text-green-700 font-medium">
-              Model ready · {ml.name || ml.model_type || 'loaded'}
-            </span>
           </div>
         </>
       ) : ml?.online ? (

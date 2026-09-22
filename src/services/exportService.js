@@ -1,3 +1,5 @@
+import { modelLabel } from './modelLabel';
+
 export function exportToCSV(prediction) {
   const conditions = prediction.conditions || {};
   const condStr = [
@@ -8,12 +10,12 @@ export function exportToCSV(prediction) {
   ].filter(Boolean).join(' | ') || 'Not specified';
 
   const meta = [
-    '# hsFAST Stability Prediction Report',
+    '# EnduraFAST Stability Prediction Report (StrataBio)',
     `# Protein: ${prediction.fastaSequence?.split('\n')[0]?.replace('>', '') || 'Unknown'}`,
     `# Date: ${new Date(prediction.createdAt || Date.now()).toLocaleString()}`,
     `# Conditions: ${condStr}`,
     `# Tier: ${prediction.tier || 'BRONZE'}`,
-    `# Model: ${prediction.modelVersion || 'mock-v1.0'}`,
+    `# Model: ${modelLabel(prediction.modelVersion)}`,
     `# Note: ddG (kcal/mol) = predicted free energy change on unfolding. More negative = more stable.`,
     ``,
   ].join('\n');
@@ -51,7 +53,7 @@ export function exportToCSV(prediction) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = `hsFAST_prediction_${String(prediction._id || prediction.id).slice(-8)}.csv`;
+  link.download = `EnduraFAST_prediction_${String(prediction._id || prediction.id).slice(-8)}.csv`;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);

@@ -11,6 +11,7 @@ import {
 import { useApp } from '../context/AppContext';
 import api from '../services/apiClient';
 import { OutOfRangeBadge, OutOfRangeNotice, HeuristicNotice, ModelBadge } from '../components/PredictionFlags';
+import { modelLabel } from '../services/modelLabel';
 
 // ── Stability scale constants ─────────────────────────────────────────────────
 // Client convention: NEGATIVE ΔG = more stable. No qualitative text labels — number only.
@@ -227,7 +228,7 @@ export default function Results() {
       new Date(prediction.createdAt).toISOString(),
       prediction.dG ?? '',
       prediction.seqLen ?? '',
-      prediction.modelVersion ?? '',
+      modelLabel(prediction.modelVersion),
     ];
     const csv = 'id,created_at,dG_kcal_mol,seq_len,model_version\n' + row.join(',');
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -242,10 +243,10 @@ export default function Results() {
       <div className="p-6 flex flex-col items-center justify-center gap-3 text-gray-400 min-h-64">
         <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
         <p className="text-sm font-medium text-gray-600">
-          {prediction?.status === 'RUNNING' ? 'Running ESM2 inference...' :
+          {prediction?.status === 'RUNNING' ? 'Running inference...' :
            prediction?.status === 'QUEUED'  ? 'Waiting in queue...' : 'Loading results...'}
         </p>
-        <p className="text-xs text-gray-400">ESM2-LoRA inference typically runs in &lt;1 s</p>
+        <p className="text-xs text-gray-400">Inference typically completes in a few seconds</p>
       </div>
     );
   }
@@ -316,7 +317,7 @@ export default function Results() {
             {/* Named explicitly: ΔG from different models is not on a common scale,
                 so the reader needs to know which one produced this number. */}
             <span aria-hidden="true">·</span>
-            <ModelBadge modelVersion={prediction.modelVersion || 'esm2-lora'} />
+            <ModelBadge modelVersion={prediction.modelVersion} />
           </p>
         </div>
 
@@ -383,7 +384,7 @@ export default function Results() {
             <div>
               <p className="text-sm font-semibold text-amber-800">Sequence truncated to {prediction.seqLen} aa</p>
               <p className="text-xs text-amber-700 mt-0.5">
-                The current ESM2-35M model evaluates the first {prediction.seqLen} residues, so ΔG and the
+                The model evaluates the first {prediction.seqLen} residues, so ΔG and the
                 mutation scan cover only that region. Removing this length cap (full-length support) is the next model improvement.
               </p>
             </div>

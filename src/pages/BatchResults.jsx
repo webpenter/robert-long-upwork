@@ -6,6 +6,7 @@ import {
 } from 'recharts';
 import api from '../services/apiClient';
 import { OutOfRangeBadge, ModelBadge, MixedModelWarning } from '../components/PredictionFlags';
+import { modelLabel } from '../services/modelLabel';
 
 // Colour by sign — client convention: negative ΔG = more stable.
 function dgColor(dg) {
@@ -49,7 +50,7 @@ function RankedTooltip({ active, payload }) {
           {d.dG >= 0 ? '+' : ''}{d.dG.toFixed(2)}
         </span> kcal/mol
       </p>
-      {d.modelVersion && <p className="text-gray-400 mt-0.5 truncate">{d.modelVersion}</p>}
+      {d.modelVersion && <p className="text-gray-400 mt-0.5 truncate">{modelLabel(d.modelVersion)}</p>}
       {d.inDistribution === false && (
         <p className="text-amber-700 mt-1 flex items-start gap-1">
           <AlertTriangle className="w-3 h-3 shrink-0 mt-0.5" />
@@ -140,7 +141,7 @@ export default function BatchResults() {
     const body = sorted.map(p =>
       [rankOf(p) ?? '', JSON.stringify(name(p)), p.dG ?? '', p.seqLen ?? '',
        p.inDistribution === false ? 'extrapolated' : 'in_range',
-       p.modelVersion ?? '', p.status, p._id].join(',')
+       modelLabel(p.modelVersion), p.status, p._id].join(',')
     ).join('\n');
     const blob = new Blob([header + body], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);

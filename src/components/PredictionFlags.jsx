@@ -1,32 +1,19 @@
 import { AlertTriangle, FlaskConical, Layers } from 'lucide-react';
 
-/**
- * Predictions in this database span several models — the platform has been
- * through an ESM2-35M LoRA, a plain 150M, and the current gated 150M since June.
- * Their ΔG values are NOT on a common scale, so ranking or comparing across them
- * is meaningless. `modelVersion` is stored on every prediction; these helpers make
- * it visible and warn when a set mixes models.
- */
-const MODEL_LABELS = {
-  'esm2_t30_150M_lora_gated':     'ESM2-150M gated',
-  'facebook/esm2_t30_150M_UR50D': 'ESM2-150M',
-  'facebook/esm2_t12_35M_UR50D':  'ESM2-35M',
-  'protstab_cnn_v0':              'CNN v0',
-};
+import { modelLabel } from '../services/modelLabel';
 
-function modelLabel(modelVersion) {
-  if (!modelVersion) return 'unknown';
-  const isFallback = modelVersion.includes('[fallback]');
-  const base = modelVersion.replace(' [fallback]', '');
-  return (MODEL_LABELS[base] || base) + (isFallback ? ' (fallback)' : '');
-}
+/**
+ * Predictions in this database span several models, and their ΔG values are NOT
+ * on a common scale, so ranking or comparing across them is meaningless. These
+ * helpers surface each prediction's model as a neutral version number (see
+ * services/modelLabel.js) and warn when a set mixes models.
+ */
 
 /** Small neutral chip naming the model a prediction came from. */
 export function ModelBadge({ modelVersion, className = '' }) {
   if (!modelVersion) return null;
   return (
     <span
-      title={modelVersion}
       className={`inline-flex items-center rounded-md bg-gray-50 border border-gray-200 px-1.5 py-0.5 text-[11px] font-medium text-gray-600 whitespace-nowrap ${className}`}
     >
       {modelLabel(modelVersion)}
