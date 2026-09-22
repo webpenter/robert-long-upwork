@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Sun, Moon, AlertTriangle } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import './Landing.css';
 
 const THEME_KEY = 'hsfast-theme';
@@ -23,6 +24,9 @@ function initialTheme() {
 
 export default function Landing() {
   const [theme, setTheme] = useState(initialTheme);
+  // The page is reachable while signed in (see the "/" route in App.jsx), so the
+  // sign-in calls to action become a way back into the app instead.
+  const { user } = useAuth();
 
   const toggleTheme = () => {
     const next = theme === 'dark' ? 'light' : 'dark';
@@ -47,8 +51,14 @@ export default function Landing() {
           >
             {theme === 'dark' ? <Moon className="w-4 h-4" /> : <Sun className="w-4 h-4" />}
           </button>
-          <Link className="btn btn-ghost" to="/login">Sign in</Link>
-          <Link className="btn btn-primary" to="/register">Get started</Link>
+          {user ? (
+            <Link className="btn btn-primary" to="/dashboard">Open dashboard</Link>
+          ) : (
+            <>
+              <Link className="btn btn-ghost" to="/login">Sign in</Link>
+              <Link className="btn btn-primary" to="/register">Get started</Link>
+            </>
+          )}
         </div>
       </header>
 
@@ -61,7 +71,9 @@ export default function Landing() {
             predicts stabilizing mutations based on large, proprietary wet lab datasets.
           </p>
           <div className="cta-row">
-            <Link className="btn btn-primary" to="/register">Get started &rarr;</Link>
+            <Link className="btn btn-primary" to={user ? '/dashboard' : '/register'}>
+              {user ? 'Open dashboard' : 'Get started'} &rarr;
+            </Link>
             <a className="link-quiet" href="#pipeline">See how a prediction is made</a>
           </div>
         </div>
@@ -294,8 +306,10 @@ export default function Landing() {
         <div className="cta-band">
           <h2>See your own sequences ranked.</h2>
           <div className="cta-side">
-            <Link className="btn btn-primary" to="/register">Get started &rarr;</Link>
-            <span className="cta-note">Login required.</span>
+            <Link className="btn btn-primary" to={user ? '/predict' : '/register'}>
+              {user ? 'New prediction' : 'Get started'} &rarr;
+            </Link>
+            {!user && <span className="cta-note">Login required.</span>}
           </div>
         </div>
       </section>

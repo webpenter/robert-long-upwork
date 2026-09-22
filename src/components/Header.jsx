@@ -1,4 +1,5 @@
-import { useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
+import { Home } from 'lucide-react';
 import NotificationBell from './NotificationBell';
 import UserMenu from './UserMenu';
 
@@ -19,6 +20,14 @@ export default function Header() {
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold text-gray-900">{title}</h1>
         <div className="flex items-center gap-3">
+          <Link
+            to="/"
+            title="Open the EnduraFAST home page"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm text-gray-500 hover:text-gray-900 rounded-lg hover:bg-gray-100 transition-colors"
+          >
+            <Home className="w-4 h-4" />
+            <span className="hidden sm:inline">Home</span>
+          </Link>
           <NotificationBell />
           <UserMenu />
         </div>

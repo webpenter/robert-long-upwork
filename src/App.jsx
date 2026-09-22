@@ -36,7 +36,11 @@ function PublicRoute({ children }) {
 function AppRoutes() {
   return (
     <Routes>
-      <Route path="/" element={<PublicRoute><Landing /></PublicRoute>} />
+      {/* Public front, deliberately NOT wrapped in PublicRoute. A signed-in user
+          following the link (or the Home button in the app header) should be able
+          to read the page rather than be bounced to /dashboard; Landing swaps its
+          own sign-in buttons for a dashboard link when a session exists. */}
+      <Route path="/" element={<Landing />} />
       <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
       <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
       <Route path="/dashboard" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
