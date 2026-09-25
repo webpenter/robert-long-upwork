@@ -88,20 +88,21 @@ Keep this URL — it's `ML_SERVICE_URL`.
 4. Deploy. When live, the API is at `https://enzyme-ml-backend.onrender.com`.
    Verify: `https://enzyme-ml-backend.onrender.com/api/health` → `{"status":"ok"}`.
 
-### Seed the demo login (one time)
+### Create the first administrator (one time, fresh database only)
 
-The app requires sign-in. Seed the built-in demo accounts using your Atlas
-string. From your local `backend/` folder (or Render Shell):
+Sign-up is closed: accounts are created by an administrator under
+**Settings → Users**. A new database therefore needs one admin to start from.
+From your local `backend/` folder (or Render Shell):
 
 ```powershell
 cd backend
 $env:MONGODB_URI = "mongodb+srv://...your atlas string..."
+$env:SEED_ADMIN_EMAIL = "you@yourcompany.com"
 npm run seed
 ```
 
-Demo credentials created:
-- **Scientist:** `demo@enzymeml.com` / `demo123`
-- **Admin:** `admin@enzymeml.com` / `admin123`
+The script prints a generated password once. Sign in and change it under
+**Settings → Password**. Never commit credentials to this repository.
 
 Keep the backend URL — append `/api` for the frontend: `https://enzyme-ml-backend.onrender.com/api`
 
@@ -123,9 +124,8 @@ Keep the backend URL — append `/api` for the frontend: `https://enzyme-ml-back
 
 ## Share with the client
 
-Send them:
-- **Link:** `https://<project>.vercel.app`
-- **Login:** `demo@enzymeml.com` / `demo123`
+Send them the link, then create their account under **Settings → Users** and
+pass on the temporary password privately. There is no shared demo login.
 
 ## Free-tier caveats (tell the client)
 

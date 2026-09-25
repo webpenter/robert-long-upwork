@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { FlaskConical, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { accessMailto } from '../services/access';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -26,11 +27,6 @@ export default function Login() {
     }
   };
 
-  const handleDemo = () => {
-    setEmail('demo@enzymeml.com');
-    setPassword('demo123');
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
@@ -38,8 +34,8 @@ export default function Login() {
           <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-500 rounded-2xl mb-4 shadow-lg">
             <FlaskConical className="w-8 h-8 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-white">EnduraFAST</h1>
-          <p className="text-slate-400 mt-1 text-sm">AI-Powered Enzyme Stability Prediction</p>
+          <h1 className="text-2xl font-bold text-white">StrataBio Stability Platform</h1>
+          <p className="text-slate-400 mt-1 text-sm">Powered by EnduraFAST</p>
         </div>
 
         <div className="bg-white rounded-2xl shadow-2xl p-8">
@@ -77,17 +73,9 @@ export default function Login() {
             </button>
           </form>
 
-          <div className="mt-3">
-            <button onClick={handleDemo}
-              className="w-full border border-gray-200 text-gray-600 py-2.5 px-4 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors">
-              Try with Demo Account
-            </button>
-            <p className="text-center text-xs text-gray-400 mt-2">demo@enzymeml.com / demo123</p>
-          </div>
-
           <p className="mt-6 text-center text-sm text-gray-500">
-            No account?{' '}
-            <Link to="/register" className="text-blue-600 hover:text-blue-700 font-medium">Create one free</Link>
+            Need an account?{' '}
+            <a href={accessMailto} className="text-blue-600 hover:text-blue-700 font-medium">Request access</a>
           </p>
         </div>
       </div>

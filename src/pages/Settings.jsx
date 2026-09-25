@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { User, CreditCard, Save, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import ChangePassword from '../components/ChangePassword';
+import UserAdmin from '../components/UserAdmin';
 
 function Section({ title, icon: Icon, children }) {
   return (
@@ -91,6 +93,10 @@ export default function Settings() {
           </div>
         </form>
       </Section>
+
+      <ChangePassword />
+
+      {user?.role === 'ADMIN' && <UserAdmin currentUserId={user._id} />}
 
       {/* Subscription */}
       <Section title="Subscription" icon={CreditCard}>

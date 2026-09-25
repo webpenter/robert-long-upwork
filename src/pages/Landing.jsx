@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Sun, Moon, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { accessMailto } from '../services/access';
 import './Landing.css';
 
 const THEME_KEY = 'hsfast-theme';
@@ -37,7 +38,7 @@ export default function Landing() {
   return (
     <div className="landing-page" data-theme-scope={theme}>
       <header className="site-header">
-        <div className="wordmark">EnduraFAST <span className="tag">by StrataBio</span></div>
+        <div className="wordmark">StrataBio Stability Platform <span className="tag">Powered by EnduraFAST</span></div>
         <div className="header-actions">
           <div className="header-links">
             <a className="link-quiet" href="#pipeline">How it works</a>
@@ -56,7 +57,7 @@ export default function Landing() {
           ) : (
             <>
               <Link className="btn btn-ghost" to="/login">Sign in</Link>
-              <Link className="btn btn-primary" to="/register">Get started</Link>
+              <a className="btn btn-primary" href={accessMailto}>Request access</a>
             </>
           )}
         </div>
@@ -71,9 +72,9 @@ export default function Landing() {
             predicts stabilizing mutations based on large, proprietary wet lab datasets.
           </p>
           <div className="cta-row">
-            <Link className="btn btn-primary" to={user ? '/dashboard' : '/register'}>
-              {user ? 'Open dashboard' : 'Get started'} &rarr;
-            </Link>
+            {user
+              ? <Link className="btn btn-primary" to="/dashboard">Open dashboard &rarr;</Link>
+              : <a className="btn btn-primary" href={accessMailto}>Request access &rarr;</a>}
             <a className="link-quiet" href="#pipeline">See how a prediction is made</a>
           </div>
         </div>
@@ -306,20 +307,20 @@ export default function Landing() {
         <div className="cta-band">
           <h2>See your own sequences ranked.</h2>
           <div className="cta-side">
-            <Link className="btn btn-primary" to={user ? '/predict' : '/register'}>
-              {user ? 'New prediction' : 'Get started'} &rarr;
-            </Link>
-            {!user && <span className="cta-note">Login required.</span>}
+            {user
+              ? <Link className="btn btn-primary" to="/predict">New prediction &rarr;</Link>
+              : <a className="btn btn-primary" href={accessMailto}>Request access &rarr;</a>}
+            {!user && <span className="cta-note">Access by invitation.</span>}
           </div>
         </div>
       </section>
 
       <footer>
-        <div className="fmark">EnduraFAST</div>
+        <div className="fmark">StrataBio Stability Platform</div>
         <p className="fine">
-          EnduraFAST is a protein and enzyme stability prediction platform built by StrataBio.
-          Predictions are a computational estimate for prioritising candidates, not a substitute
-          for experimental validation.
+          The StrataBio Stability Platform, powered by EnduraFAST, predicts protein and enzyme
+          stability. Predictions are a computational estimate for prioritising candidates, not a
+          substitute for experimental validation.
         </p>
       </footer>
     </div>

@@ -1,66 +1,46 @@
+// One-time bootstrap for an EMPTY database: creates the internal organisation and
+// a single administrator. Public sign-up is closed (routes/auth.js), so every
+// other account is created by that admin under Settings → Users.
+//
+// No credentials live in this file. The admin email comes from SEED_ADMIN_EMAIL;
+// the password is generated here and printed once. It refuses to run against a
+// database that already has users, so it cannot overwrite a live admin.
 require('dotenv').config();
+const crypto = require('crypto');
 const mongoose = require('mongoose');
 const User = require('./models/User');
 const Organization = require('./models/Organization');
-const Project = require('./models/Project');
 
 async function seed() {
+  const email = (process.env.SEED_ADMIN_EMAIL || '').trim().toLowerCase();
+  if (!email) throw new Error('Set SEED_ADMIN_EMAIL to the address the first admin will sign in with.');
+
   await mongoose.connect(process.env.MONGODB_URI);
-  console.log('Connected to MongoDB');
+  if (await User.countDocuments()) {
+    throw new Error('This database already has users. Create further accounts under Settings → Users.');
+  }
 
-  // Clear existing seed data
-  await Promise.all([
-    User.deleteMany({ email: { $in: ['admin@enzymeml.com', 'demo@enzymeml.com'] } }),
-    Organization.deleteMany({ slug: 'internal-team' }),
-  ]);
+  const org = await Organization.findOne({ slug: 'internal-team' })
+    || await Organization.create({ name: 'Internal Team', slug: 'internal-team' });
 
-  const org = await Organization.create({ name: 'Internal Team', slug: 'internal-team' });
-
-  const adminHash = await User.hashPassword('admin123');
-  const admin = await User.create({
-    name: 'Admin User',
-    email: 'admin@enzymeml.com',
-    passwordHash: adminHash,
+  const password = crypto.randomBytes(18).toString('base64url');
+  await User.create({
+    name: process.env.SEED_ADMIN_NAME || 'Administrator',
+    email,
+    passwordHash: await User.hashPassword(password),
     role: 'ADMIN',
     tier: 'GOLD',
     org: org._id,
   });
 
-  const demoHash = await User.hashPassword('demo123');
-  const demo = await User.create({
-    name: 'Demo Scientist',
-    email: 'demo@enzymeml.com',
-    passwordHash: demoHash,
-    role: 'INTERNAL_SCIENTIST',
-    tier: 'GOLD',
-    org: org._id,
-  });
-
-  await Project.create([
-    {
-      name: 'Lipase Thermostability Campaign',
-      description: 'Engineering Candida antarctica lipase B for improved thermal stability at 65°C.',
-      targetEnzyme: 'Candida antarctica lipase B (CALB)',
-      org: org._id,
-      createdBy: demo._id,
-    },
-    {
-      name: 'Trypsin pH Tolerance',
-      description: 'Improving trypsin stability across acidic processing conditions (pH 4.5).',
-      targetEnzyme: 'Bovine trypsin',
-      org: org._id,
-      createdBy: demo._id,
-    },
-  ]);
-
-  console.log('\nSeed complete:');
-  console.log('  Admin:     admin@enzymeml.com / admin123  (Gold)');
-  console.log('  Scientist: demo@enzymeml.com  / demo123   (Gold)');
-
+  console.log('\nFirst administrator created:');
+  console.log(`  Email:    ${email}`);
+  console.log(`  Password: ${password}   (shown once; change it under Settings → Password)`);
   await mongoose.disconnect();
 }
 
-seed().catch((err) => {
-  console.error(err);
+seed().catch(async (err) => {
+  console.error(err.message);
+  await mongoose.disconnect().catch(() => {});
   process.exit(1);
 });

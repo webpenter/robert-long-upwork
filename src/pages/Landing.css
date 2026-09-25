@@ -364,4 +364,9 @@
 @media (max-width: 420px) {
   .landing-page .metrics-grid { grid-template-columns: 1fr; }
   .landing-page .header-actions { gap: 10px; }
+  /* "StrataBio Stability Platform" is long enough to push the primary button
+     off a phone screen. Shrink the wordmark and drop the theme toggle, the one
+     header control a visitor can do without; Sign in stays for returning users. */
+  .landing-page .wordmark { font-size: 1.02rem; min-width: 0; }
+  .landing-page .theme-toggle { display: none; }
 }

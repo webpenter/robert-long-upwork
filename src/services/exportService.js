@@ -10,7 +10,7 @@ export function exportToCSV(prediction) {
   ].filter(Boolean).join(' | ') || 'Not specified';
 
   const meta = [
-    '# EnduraFAST Stability Prediction Report (StrataBio)',
+    '# StrataBio Stability Platform, powered by EnduraFAST: Prediction Report',
     `# Protein: ${prediction.fastaSequence?.split('\n')[0]?.replace('>', '') || 'Unknown'}`,
     `# Date: ${new Date(prediction.createdAt || Date.now()).toLocaleString()}`,
     `# Conditions: ${condStr}`,

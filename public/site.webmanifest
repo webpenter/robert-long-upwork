@@ -1,6 +1,6 @@
 {
-  "name": "EnduraFAST by StrataBio",
-  "short_name": "EnduraFAST",
+  "name": "StrataBio Stability Platform",
+  "short_name": "StrataBio",
   "description": "Protein and enzyme stability prediction platform.",
   "icons": [
     { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },

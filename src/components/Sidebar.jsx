@@ -54,8 +54,8 @@ export default function Sidebar() {
             <FlaskConical className="w-5 h-5 text-white" />
           </div>
           <div>
-            <div className="text-white font-semibold text-sm leading-none">EnduraFAST</div>
-            <div className="text-slate-400 text-xs mt-1">by StrataBio</div>
+            <div className="text-white font-semibold text-sm leading-tight">StrataBio Stability Platform</div>
+            <div className="text-slate-400 text-xs mt-1">Powered by EnduraFAST</div>
           </div>
         </div>
       </div>

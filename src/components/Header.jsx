@@ -13,7 +13,7 @@ export default function Header() {
   const location = useLocation();
   const title = location.pathname.startsWith('/results')
     ? 'Prediction Results'
-    : TITLES[location.pathname] || 'EnduraFAST';
+    : TITLES[location.pathname] || 'StrataBio Stability Platform';
 
   return (
     <header className="bg-white border-b border-gray-200 px-6 py-3.5 flex-shrink-0">
@@ -22,7 +22,7 @@ export default function Header() {
         <div className="flex items-center gap-3">
           <Link
             to="/"
-            title="Open the EnduraFAST home page"
+            title="Open the home page"
             className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm text-gray-500 hover:text-gray-900 rounded-lg hover:bg-gray-100 transition-colors"
           >
             <Home className="w-4 h-4" />

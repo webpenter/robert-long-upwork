@@ -32,13 +32,6 @@ export function AuthProvider({ children }) {
     return user;
   };
 
-  const register = async (name, email, password) => {
-    const { user, accessToken, refreshToken } = await api.post('/auth/register', { name, email, password });
-    api.saveTokens(accessToken, refreshToken);
-    setUser(user);
-    return user;
-  };
-
   const logout = async () => {
     const { refresh } = api.getTokens();
     try { await api.post('/auth/logout', { refreshToken: refresh }); } catch {}
@@ -53,7 +46,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, updateUser }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, updateUser }}>
       {!loading && children}
     </AuthContext.Provider>
   );

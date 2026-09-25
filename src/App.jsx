@@ -3,7 +3,6 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { AppProvider } from './context/AppContext';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
-import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import NewPrediction from './pages/NewPrediction';
 import Predictions from './pages/Predictions';
@@ -42,7 +41,8 @@ function AppRoutes() {
           own sign-in buttons for a dashboard link when a session exists. */}
       <Route path="/" element={<Landing />} />
       <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
-      <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
+      {/* Sign-up is closed; old links land on the sign-in page. */}
+      <Route path="/register" element={<Navigate to="/login" replace />} />
       <Route path="/dashboard" element={<ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>} />
       <Route path="/predict" element={<ProtectedRoute><Layout><NewPrediction /></Layout></ProtectedRoute>} />
       <Route path="/predictions" element={<ProtectedRoute><Layout><Predictions /></Layout></ProtectedRoute>} />
