@@ -10,7 +10,8 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import api from '../services/apiClient';
-import { OutOfRangeBadge, OutOfRangeNotice, HeuristicNotice, ModelBadge } from '../components/PredictionFlags';
+import { ConfidenceBadge, HeuristicNotice, ModelBadge } from '../components/PredictionFlags';
+import { confidenceText, CONFIDENCE_EXPLAINER } from '../services/confidence';
 import { modelLabel } from '../services/modelLabel';
 
 // ── Stability scale constants ─────────────────────────────────────────────────
@@ -335,9 +336,9 @@ export default function Results() {
                 {prediction.dG >= 0 ? '+' : ''}{prediction.dG.toFixed(2)}
               </div>
               <div className="text-sm text-gray-500 mt-1">kcal / mol</div>
-              {prediction.inDistribution === false && (
+              {prediction.confidence != null && (
                 <div className="mt-2 flex justify-center">
-                  <OutOfRangeBadge prediction={prediction} />
+                  <ConfidenceBadge confidence={prediction.confidence} />
                 </div>
               )}
             </div>
@@ -359,9 +360,9 @@ export default function Results() {
           {[
             { icon: Thermometer, label: 'ΔG',         value: `${prediction.dG >= 0 ? '+' : ''}${prediction.dG.toFixed(2)} kcal/mol`, color },
             { icon: Zap,         label: 'Sequence Length', value: `${prediction.seqLen ?? '—'} aa${prediction.truncated ? ' (truncated)' : ''}`, color: '#6b7280' },
-            { icon: Info,        label: 'Inference Time',  value: prediction.latencyMs != null ? `${prediction.latencyMs} ms` : '—', color: '#6b7280' },
-          ].map(({ icon: Icon, label, value, color }) => (
-            <div key={label} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
+            { icon: Info,        label: 'Confidence',      value: confidenceText(prediction.confidence) || '—', color: '#6b7280', hint: CONFIDENCE_EXPLAINER },
+          ].map(({ icon: Icon, label, value, color, hint }) => (
+            <div key={label} title={hint} className="bg-white rounded-xl border border-gray-100 shadow-sm p-4">
               <div className="flex items-center gap-2 mb-2">
                 <Icon className="w-4 h-4" style={{ color }} />
                 <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">{label}</span>
@@ -370,9 +371,6 @@ export default function Results() {
             </div>
           ))}
         </div>
-
-        {/* Extrapolation warning — shown above the mutation scan so it is read first */}
-        <OutOfRangeNotice prediction={prediction} />
 
         {/* Suggested stabilizing mutations (ΔΔG scan) */}
         <StabilizingMutations candidates={prediction.candidates} ddgSource={prediction.ddgSource} />

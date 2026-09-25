@@ -1,13 +1,14 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import {
-  Target, Loader2, AlertTriangle, Layers, Download, Info, TrendingDown, FlaskConical,
+  Target, Loader2, Layers, Download, Info, TrendingDown, FlaskConical,
 } from 'lucide-react';
 import {
   ScatterChart, Scatter, XAxis, YAxis, ZAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Cell,
 } from 'recharts';
 import api from '../services/apiClient';
-import { ModelBadge } from '../components/PredictionFlags';
+import { ModelBadge, ConfidenceBadge } from '../components/PredictionFlags';
+import { confidenceLevel } from '../services/confidence';
 import { modelLabel } from '../services/modelLabel';
 
 const METRICS = [
@@ -161,13 +162,13 @@ export default function PredictedVsMeasured() {
   }, [data, rows]);
 
   function exportCsv() {
-    const header = 'predicted_rank,measured_rank,rank_error,name,mutations,predicted_dG_kcal_mol,measured,measured_sd,unit,n_replicates,model_version,in_distribution';
+    const header = 'predicted_rank,measured_rank,rank_error,name,mutations,predicted_dG_kcal_mol,measured,measured_sd,unit,n_replicates,model_version,confidence';
     const body = rows.map(r => [
       r.predictedRank, r.measuredRank, r.rankError,
       `"${(r.name || '').replace(/"/g, '""')}"`,
       `"${(r.mutations || []).join(' ')}"`,
       r.predictedDg, r.measured, r.measuredSd ?? '', r.unit, r.nReplicates,
-      modelLabel(r.modelVersion), r.inDistribution,
+      modelLabel(r.modelVersion), r.confidence ?? '',
     ].join(','));
     const blob = new Blob([[header, ...body].join('\n')], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -179,7 +180,8 @@ export default function PredictedVsMeasured() {
   }
 
   const mixedModels = (data?.modelVersions?.length || 0) > 1;
-  const anyExtrapolated = rows.some(r => !r.inDistribution);
+  const isLow = (r) => confidenceLevel(r.confidence)?.tone === 'low';
+  const anyLow = rows.some(isLow);
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-5">
@@ -359,15 +361,14 @@ export default function PredictedVsMeasured() {
                 )}
                 <Scatter data={rows} isAnimationActive={false}>
                   {rows.map(r => (
-                    <Cell key={r.variantId} fill={r.inDistribution ? '#3b82f6' : '#f59e0b'} />
+                    <Cell key={r.variantId} fill={isLow(r) ? '#94a3b8' : '#3b82f6'} />
                   ))}
                 </Scatter>
               </ScatterChart>
             </ResponsiveContainer>
-            {anyExtrapolated && (
-              <p className="text-xs text-amber-600 mt-2 flex items-center gap-1.5">
-                <AlertTriangle className="w-3.5 h-3.5" />
-                Amber points fell outside the model&rsquo;s training range — treat those predictions as extrapolation.
+            {anyLow && (
+              <p className="text-xs text-gray-500 mt-2">
+                Grey points are predictions with low confidence: sequences unlike the model&rsquo;s training data.
               </p>
             )}
           </div>
@@ -455,10 +456,7 @@ export default function PredictedVsMeasured() {
                       <span style={{ color: r.predictedDg < 0 ? '#16a34a' : '#dc2626' }}>
                         {r.predictedDg > 0 ? '+' : ''}{r.predictedDg.toFixed(2)}
                       </span>
-                      {!r.inDistribution && (
-                        <AlertTriangle className="w-3 h-3 text-amber-500 inline ml-1.5 -mt-0.5"
-                          title={r.flags?.join('\n\n')} />
-                      )}
+                      <ConfidenceBadge confidence={r.confidence} className="ml-1.5" />
                     </td>
                     <td className="px-5 py-3 text-sm font-mono text-gray-700">
                       {r.measured}

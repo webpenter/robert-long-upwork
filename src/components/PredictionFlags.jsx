@@ -1,6 +1,7 @@
-import { AlertTriangle, FlaskConical, Layers } from 'lucide-react';
+import { FlaskConical, Layers } from 'lucide-react';
 
 import { modelLabel } from '../services/modelLabel';
+import { confidenceLevel, confidenceText, CONFIDENCE_EXPLAINER } from '../services/confidence';
 
 /**
  * Predictions in this database span several models, and their ΔG values are NOT
@@ -52,61 +53,28 @@ export function MixedModelWarning({ predictions, action = 'Ranking' }) {
 }
 
 /**
- * Trust signals for a prediction, produced by the ML service
- * (see ml-service/main.py::_prediction_flags) and stored on the Prediction
- * document as `inDistribution` / `flags` / `ddgSource`.
- *
- * `inDistribution: false` means the model extrapolated — either the ΔG fell
- * outside the range of labels it was trained on, or the sequence is longer than
- * anything it ever saw. The number is still returned; it just should not be
- * trusted the same way as an in-range one.
+ * Per-prediction confidence, shown in place of the old "extrapolated" badge.
+ * The score is computed server-side (backend/src/services/confidence.js) from
+ * how far the sequence sits from the training data; this only renders it.
+ * Predictions from checkpoints the score is not calibrated for carry no score
+ * and render nothing (or a dash, in tables).
  */
+const TONE_CLASS = {
+  high:   'bg-emerald-50 border-emerald-200 text-emerald-700',
+  medium: 'bg-sky-50 border-sky-200 text-sky-700',
+  low:    'bg-slate-50 border-slate-200 text-slate-600',
+};
 
-/** Compact badge for table rows. Renders nothing when the prediction is in range. */
-export function OutOfRangeBadge({ prediction, className = '' }) {
-  if (prediction?.inDistribution !== false) return null;
-  const reasons = prediction.flags?.length
-    ? prediction.flags.join('\n\n')
-    : 'This prediction falls outside the range the model was trained on.';
-
+export function ConfidenceBadge({ confidence, dashWhenMissing = false, className = '' }) {
+  const lvl = confidenceLevel(confidence);
+  if (!lvl) return dashWhenMissing ? <span className="text-gray-300">—</span> : null;
   return (
     <span
-      title={reasons}
-      className={`inline-flex items-center gap-1 rounded-md bg-amber-50 border border-amber-200 px-1.5 py-0.5 text-[11px] font-semibold text-amber-700 ${className}`}
+      title={CONFIDENCE_EXPLAINER}
+      className={`inline-flex items-center rounded-md border px-1.5 py-0.5 text-[11px] font-semibold whitespace-nowrap ${TONE_CLASS[lvl.tone]} ${className}`}
     >
-      <AlertTriangle className="w-3 h-3 shrink-0" />
-      Extrapolated
+      {confidenceText(confidence)}
     </span>
-  );
-}
-
-/** Full-width explanation panel for a detail page. */
-export function OutOfRangeNotice({ prediction }) {
-  if (prediction?.inDistribution !== false) return null;
-  const flags = prediction.flags?.length ? prediction.flags : [
-    'This prediction falls outside the range the model was trained on.',
-  ];
-
-  return (
-    <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex gap-3">
-      <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-      <div className="space-y-1">
-        <p className="text-sm font-semibold text-amber-800">
-          Outside the model&rsquo;s training range
-        </p>
-        <ul className="text-sm text-amber-700 space-y-1 list-disc list-inside">
-          {flags.map((f, i) => {
-            // Flags arrive as "code: human readable explanation" — show the prose.
-            const idx = f.indexOf(': ');
-            return <li key={i}>{idx > -1 ? f.slice(idx + 2) : f}</li>;
-          })}
-        </ul>
-        <p className="text-xs text-amber-600 pt-1">
-          The value is still shown, but treat it as an estimate rather than a measurement.
-          Ranking against other sequences is more reliable than the absolute number.
-        </p>
-      </div>
-    </div>
   );
 }
 

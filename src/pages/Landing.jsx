@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Sun, Moon, AlertTriangle } from 'lucide-react';
+import { Sun, Moon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { accessMailto } from '../services/access';
 import './Landing.css';
@@ -199,8 +199,8 @@ export default function Landing() {
           </div>
           <div className="pipe-step">
             <span className="pipe-num">05</span>
-            <h3>Range check</h3>
-            <p>Anything outside the model&rsquo;s training envelope is flagged before you see it.</p>
+            <h3>Confidence</h3>
+            <p>Every prediction carries a confidence score reflecting how closely the sequence resembles what the model has seen.</p>
           </div>
         </div>
       </section>
@@ -233,10 +233,10 @@ export default function Landing() {
             </div>
             <div className="batch-row">
               <span className="batch-row-name">
-                fusion construct, 162 aa
-                <span className="batch-row-flag"><AlertTriangle style={{ width: 9, height: 9 }} /> beyond trained length</span>
+                fusion construct, 300 aa
+                <span className="batch-row-flag">low confidence &middot; 21%</span>
               </span>
-              <div className="batch-row-track"><div className="batch-row-zero"></div><div className="batch-row-bar stable flagged" style={{ left: '0.5%', width: '49.5%' }}></div></div>
+              <div className="batch-row-track"><div className="batch-row-zero"></div><div className="batch-row-bar stable" style={{ left: '0.5%', width: '49.5%' }}></div></div>
               <span className="batch-row-value stable">&minus;9.90</span>
             </div>
             <div className="batch-row">
@@ -259,7 +259,7 @@ export default function Landing() {
 
           <p className="batch-caption">
             Illustrative example, not live data. <strong>Rank</strong> orders the batch;
-            the fusion construct is longer than anything in training, so it&rsquo;s flagged
+            the fusion construct is longer than anything in training, so it carries a low confidence score
             even though the number itself looks like a strong candidate.
           </p>
         </div>

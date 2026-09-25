@@ -1,6 +1,7 @@
 'use strict';
 const Prediction = require('../models/Prediction');
 const { mlFetch } = require('./mlClient');
+const { computeConfidence } = require('./confidence');
 
 // ── Call the Python ML service ───────────────────────────────────────────────
 // Delegates to the shared HTTPS-aware client so hosted (https://…) and local
@@ -171,6 +172,9 @@ async function runPrediction(predictionId) {
       }
     }
 
+    const modelVersion = usedMLService ? model_name : `${model_name} [fallback]`;
+    const confidence   = computeConfidence({ dg, seqLen: seq_len, modelVersion });
+
     await Prediction.findByIdAndUpdate(predictionId, {
       status:          'COMPLETED',
       dG:              dg,
@@ -178,8 +182,9 @@ async function runPrediction(predictionId) {
       seqLen:          seq_len,
       truncated,
       latencyMs:       latency_ms,
-      modelVersion:    usedMLService ? model_name : `${model_name} [fallback]`,
+      modelVersion,
       inDistribution,
+      confidence,
       flags:           mlFlags,
       ddgSource,
       candidates,

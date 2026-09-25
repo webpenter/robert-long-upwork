@@ -200,7 +200,7 @@ async function predictedVsMeasured({ projectId, experimentId, metricType = 'appa
     dG: { $ne: null },
   })
     .sort({ createdAt: -1 })
-    .select('variant dG modelVersion inDistribution flags seqLen createdAt');
+    .select('variant dG modelVersion inDistribution flags confidence seqLen createdAt');
 
   const predByVariant = new Map();
   for (const p of predictions) {
@@ -223,6 +223,7 @@ async function predictedVsMeasured({ projectId, experimentId, metricType = 'appa
       predictedDg:    pred.dG,
       modelVersion:   pred.modelVersion,
       inDistribution: pred.inDistribution !== false,
+      confidence:     pred.confidence ?? null,
       flags:          pred.flags || [],
       measured:       parseFloat(measuredMean.toFixed(3)),
       measuredSd:     entry.values.length > 1 ? parseFloat(stdDev(entry.values).toFixed(3)) : null,

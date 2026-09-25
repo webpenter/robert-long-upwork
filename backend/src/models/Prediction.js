@@ -81,6 +81,10 @@ const predictionSchema = new mongoose.Schema({
   // the training label range, or the sequence is longer than the model was trained on.
   inDistribution: { type: Boolean, default: true },
   flags:          [{ type: String }],
+  // 0–0.95 distance-from-training score shown to users in place of the
+  // in/out-of-range badge; null for checkpoints it is not calibrated for.
+  // See services/confidence.js.
+  confidence:     { type: Number },
   // 'heuristic' when the ΔΔG candidates came from the sequence-independent
   // fallback rather than a trained ΔΔG model — see /suggest.
   ddgSource:      { type: String },

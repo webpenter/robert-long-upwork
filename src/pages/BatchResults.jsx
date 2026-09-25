@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Download, Loader2, ExternalLink, BarChart3, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Download, Loader2, ExternalLink, BarChart3 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell, ResponsiveContainer, ReferenceLine,
 } from 'recharts';
 import api from '../services/apiClient';
-import { OutOfRangeBadge, ModelBadge, MixedModelWarning } from '../components/PredictionFlags';
+import { ConfidenceBadge, ModelBadge, MixedModelWarning } from '../components/PredictionFlags';
+import { confidenceText } from '../services/confidence';
 import { modelLabel } from '../services/modelLabel';
 
 // Colour by sign — client convention: negative ΔG = more stable.
@@ -16,22 +17,16 @@ function dgColor(dg) {
   return '#ca8a04';
 }
 
-// Y-axis label: sequence name, truncated, with a small warning glyph for any
-// prediction flagged as extrapolated — status has to travel with the tick label
-// itself, since colour alone (the bar's fill) already encodes stable/unstable
-// and can't also carry a second, unrelated signal. The axis plots by row id
-// (unique, so two identically-named sequences never collide into one bar);
-// this looks the display name back up from that id.
-function RankedAxisTick({ x, y, payload, byId, flagged }) {
+// Y-axis label: sequence name, truncated. The axis plots by row id (unique, so
+// two identically-named sequences never collide into one bar); this looks the
+// display name back up from that id. Confidence is shown in the tooltip and the
+// table rather than as a mark on the chart.
+function RankedAxisTick({ x, y, payload, byId }) {
   const row = byId.get(payload.value);
   if (!row) return null;
-  const isFlagged = flagged.has(payload.value);
   return (
     <g transform={`translate(${x},${y})`}>
-      {isFlagged && (
-        <text x={-8} y={4} textAnchor="end" fontSize="11" fill="#b45309">&#9888;</text>
-      )}
-      <text x={isFlagged ? -20 : -8} y={4} textAnchor="end" fontSize="12" fill="#4b5563">
+      <text x={-8} y={4} textAnchor="end" fontSize="12" fill="#4b5563">
         {row.displayName}
       </text>
     </g>
@@ -51,11 +46,8 @@ function RankedTooltip({ active, payload }) {
         </span> kcal/mol
       </p>
       {d.modelVersion && <p className="text-gray-400 mt-0.5 truncate">{modelLabel(d.modelVersion)}</p>}
-      {d.inDistribution === false && (
-        <p className="text-amber-700 mt-1 flex items-start gap-1">
-          <AlertTriangle className="w-3 h-3 shrink-0 mt-0.5" />
-          Outside the model&rsquo;s training range &mdash; treat as extrapolation.
-        </p>
+      {d.confidence != null && (
+        <p className="text-gray-500 mt-0.5">Confidence: {confidenceText(d.confidence)}</p>
       )}
     </div>
   );
@@ -117,12 +109,8 @@ export default function BatchResults() {
     dG: p.dG,
     rank: i + 1,
     modelVersion: p.modelVersion,
-    inDistribution: p.inDistribution,
+    confidence: p.confidence,
   })), [chartRows]);
-  const flaggedIds = useMemo(
-    () => new Set(chartData.filter(d => d.inDistribution === false).map(d => d.id)),
-    [chartData],
-  );
   const chartById = useMemo(() => new Map(chartData.map(d => [d.id, d])), [chartData]);
   // ~34px per bar reads clearly without feeling sparse; capped so a very large
   // batch scrolls inside its own card rather than stretching the whole page.
@@ -137,10 +125,10 @@ export default function BatchResults() {
   };
 
   const exportCSV = () => {
-    const header = 'rank,name,dG_kcal_mol,seq_len,in_distribution,model_version,status,id\n';
+    const header = 'rank,name,dG_kcal_mol,seq_len,confidence,model_version,status,id\n';
     const body = sorted.map(p =>
       [rankOf(p) ?? '', JSON.stringify(name(p)), p.dG ?? '', p.seqLen ?? '',
-       p.inDistribution === false ? 'extrapolated' : 'in_range',
+       p.confidence ?? '',
        modelLabel(p.modelVersion), p.status, p._id].join(',')
     ).join('\n');
     const blob = new Blob([header + body], { type: 'text/csv' });
@@ -169,12 +157,6 @@ export default function BatchResults() {
           {' · '}<span className="font-medium text-gray-500">ranked most stable first</span>
           {' · '}negative ΔG = more stable
         </p>
-        {sorted.some(p => p.inDistribution === false) && (
-          <p className="text-xs text-amber-700 mt-1.5">
-            {sorted.filter(p => p.inDistribution === false).length} of {sorted.filter(p => p.dG != null).length} predictions
-            fall outside the model&rsquo;s training range. Rank is more reliable than the absolute ΔG for those rows.
-          </p>
-        )}
       </div>
 
       <MixedModelWarning predictions={sorted} action="Ranking" />
@@ -187,25 +169,22 @@ export default function BatchResults() {
           </div>
           <p className="text-xs text-gray-400 mb-3">
             Most stable at top. Green = stable, red = unstable, amber = borderline.
-            {flaggedIds.size > 0 && (
-              <span className="text-amber-700"> &#9888; marks a prediction outside the training range.</span>
-            )}
           </p>
           <ResponsiveContainer width="100%" height={chartHeight}>
             <BarChart data={chartData} layout="vertical" margin={{ top: 4, right: 28, bottom: 4, left: 8 }}>
               <CartesianGrid horizontal={false} stroke="#f1f5f9" />
+              {/* Always include 0: every bar grows from zero, so an axis that
+                  starts at, say, -15 (every value negative) draws no bars at all. */}
               <XAxis type="number" dataKey="dG" tick={{ fontSize: 11, fill: '#9ca3af' }}
+                domain={[min => Math.floor(Math.min(0, min)), max => Math.ceil(Math.max(0, max))]}
                 label={{ value: '← more stable   ΔG (kcal/mol)   less stable →', position: 'insideBottom', offset: -2, style: { fontSize: 10.5, fill: '#9ca3af' } }} />
               <YAxis type="category" dataKey="id" width={150}
-                tick={<RankedAxisTick byId={chartById} flagged={flaggedIds} />} />
+                tick={<RankedAxisTick byId={chartById} />} />
               <ReferenceLine x={0} stroke="#d1d5db" />
               <Tooltip content={<RankedTooltip />} cursor={{ fill: '#f9fafb' }} />
-              <Bar dataKey="dG" radius={[0, 3, 3, 0]} maxBarSize={22}>
+              <Bar dataKey="dG" radius={[0, 3, 3, 0]} maxBarSize={22} isAnimationActive={false}>
                 {chartData.map(d => (
-                  <Cell key={d.id} fill={dgColor(d.dG)}
-                    stroke={flaggedIds.has(d.id) ? '#b45309' : 'none'}
-                    strokeWidth={flaggedIds.has(d.id) ? 1.5 : 0}
-                    strokeDasharray={flaggedIds.has(d.id) ? '2 2' : undefined} />
+                  <Cell key={d.id} fill={dgColor(d.dG)} />
                 ))}
               </Bar>
             </BarChart>
@@ -221,6 +200,7 @@ export default function BatchResults() {
               <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Sequence</th>
               <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Length</th>
               <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">ΔG (kcal/mol)</th>
+              <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Confidence</th>
               <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Model</th>
               <th className="px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">Status</th>
               <th className="px-4 py-3"></th>
@@ -247,8 +227,10 @@ export default function BatchResults() {
                     <span className="font-mono font-semibold" style={{ color: dgColor(p.dG) }}>
                       {p.dG != null ? `${p.dG >= 0 ? '+' : ''}${p.dG.toFixed(2)}` : '—'}
                     </span>
-                    <OutOfRangeBadge prediction={p} />
                   </div>
+                </td>
+                <td className="px-4 py-3">
+                  <ConfidenceBadge confidence={p.confidence} dashWhenMissing />
                 </td>
                 <td className="px-4 py-3">
                   <ModelBadge modelVersion={p.modelVersion} />
