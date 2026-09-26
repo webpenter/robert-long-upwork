@@ -24,7 +24,7 @@
     "pearson": 0.8646,
     "spearman": 0.8681,
     "accuracy": 0.8541,
-    "_note": "accuracy definition not yet supplied by the model author"
+    "_note": "Share of validation sequences where the predicted ΔG has the correct sign (stable vs unstable). Majority-class baseline ≈ 55%. Measures whole proteins, not the direction of a single mutation."
   },
   "region_metrics": [
     {

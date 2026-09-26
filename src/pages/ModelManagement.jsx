@@ -265,13 +265,11 @@ export default function ModelManagement() {
                     {
                       dt: 'Accuracy',
                       dd: vm.accuracy != null ? fmt(vm.accuracy, 4) : '—',
-                      // This is a pass-through number from the checkpoint's own
-                      // training run, not something computed here, and its exact
-                      // definition (accuracy at what threshold, of what
-                      // classification) has not been confirmed by the model
-                      // author. MAE and Spearman above have unambiguous
-                      // definitions; this one does not yet.
-                      title: vm._note || 'Definition not yet confirmed by the model author.',
+                      // Pass-through from the checkpoint's own training run. The
+                      // model author defined it (2026-09-26) as sign agreement on
+                      // ΔG: stable vs unstable protein, not mutation direction.
+                      // The authoritative text lives in best_model.pt.meta.json.
+                      title: vm._note || 'Share of validation sequences where the predicted ΔG has the correct sign (stable vs unstable).',
                     },
                   ].map(({ dt, dd, title }) => (
                     <div key={dt} className="flex justify-between gap-2">
