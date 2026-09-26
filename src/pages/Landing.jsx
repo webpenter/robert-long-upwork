@@ -141,9 +141,9 @@ export default function Landing() {
             <p className="note">MAE on proteins ranging from &minus;3 to 0 kcal/mol, where 47% of measured variants reside.</p>
           </div>
           <div className="metric-tile">
-            <span className="eyebrow">Validation sequences</span>
-            <div className="figure mono">40,146</div>
-            <p className="note">Held-out sequences the figures above were measured on; none were used in training.</p>
+            <span className="eyebrow">Training sequences</span>
+            <div className="figure mono">977,087</div>
+            <p className="note">Measured protein stabilities; the figures above come from a further 40,146 held-out sequences.</p>
           </div>
         </div>
       </section>
