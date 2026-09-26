@@ -173,7 +173,8 @@ function StabilizingMutations({ candidates, ddgSource }) {
               <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Mutation</th>
               <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Position</th>
               <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">ΔΔG (kcal/mol)</th>
-              <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Confidence</th>
+              <th className="px-3 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider"
+                title="From the placeholder rule, not the trained model. Unrelated to the prediction confidence shown above.">Heuristic score</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">

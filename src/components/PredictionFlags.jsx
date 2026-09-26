@@ -79,7 +79,7 @@ export function ConfidenceBadge({ confidence, dashWhenMissing = false, className
 }
 
 /**
- * Marks the ΔΔG suggestion table as heuristic. The per-mutation ΔΔG, confidence
+ * Marks the ΔΔG suggestion table as heuristic. The per-mutation ΔΔG, heuristic score
  * and hotspot values do not come from the network at all — they are a
  * deterministic function of (position, wild-type residue, mutant residue), so two
  * unrelated sequences return identical ΔΔG for the same substitution. Shown so the
@@ -92,7 +92,7 @@ export function HeuristicNotice({ source }) {
       <FlaskConical className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
       <p className="text-xs text-blue-800 leading-relaxed">
         <span className="font-semibold">Heuristic suggestions, not model predictions.</span>{' '}
-        These ΔΔG and confidence values come from a sequence-independent rule, not the
+        These ΔΔG values and heuristic scores come from a sequence-independent rule, not the
         trained model &mdash; the same substitution scores identically on any sequence.
         Use them to explore positions, not to choose bench candidates. A trained ΔΔG
         model is planned.
